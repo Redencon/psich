@@ -707,6 +707,15 @@ def forced_polls():
     return
 
 
+def good_nights():
+    with open('goodnight.json', 'r') as file:
+        gn = json.load(file)
+
+    for filename in gn:
+        bot.send_voice(gn[filename]['user_id'], gn[filename]['file_id'])
+        print('sent goodnights!', end=' ')
+    print()
+
 
 def set_commands(scope=types.BotCommandScopeDefault()):
     bot.delete_my_commands(scope=scope)
@@ -735,6 +744,7 @@ if __name__ == '__main__':
             print('There\'s np chat with user', user)
     for elem in TIMES:
         schedule.every().day.at(elem).do(send_poll, elem)
+    schedule.every().day.at('22:55').do(good_nights)
     threading.Thread(target=bot.infinity_polling, name='bot_infinity_polling', daemon=True).start()
     if timestamp() not in blkl.dab:
         blkl.clear()

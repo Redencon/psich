@@ -6,3 +6,7 @@ secret*
 *.ogg
 token.json
 credentials.json
+blacklist*
+pending*
+general*
+status*

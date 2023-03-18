@@ -12,8 +12,10 @@ CHAT = secret['CHAT']
 
 bot = telebot.TeleBot(TOKEN)
 
-with open('Nastya_fanart.ogg', 'rb') as file:
-    voice = bot.send_voice(ADMIN, file)
-    for user in (834476079, ):
-        bot.send_voice(user, voice.voice.file_id)
-        print('sent!')
+with open('goodnight.json', 'r') as file:
+    gn = json.load(file)
+
+for filename in gn:
+    voice = bot.send_voice(gn[filename]['user_id'], gn[filename]['file_id'])
+    print('sent goodnights!', end=' ')
+print()
