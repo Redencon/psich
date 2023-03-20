@@ -280,7 +280,7 @@ def setchat(message: types.Message):
 def update(message: types.Message):
     import sys
     import subprocess
-    subprocess.Popen('start.bat', creationflags=subprocess.CREATE_NEW_CONSOLE)
+    subprocess.Popen('start2.bat', creationflags=subprocess.CREATE_NEW_CONSOLE)
     global S
     S = False
     sys.exit()
