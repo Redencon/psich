@@ -386,7 +386,7 @@ def unsub_check(call):
 @bot.callback_query_handler(lambda call: call.data[:3] == 'DG_')
 def demogr(call: types.CallbackQuery):
     bot.answer_callback_query(call.id)
-    with open('pool2.json') as file:
+    with open('pool.json') as file:
         questions = json.load(file)
     cur = int(call.data[3])
     ans = int(call.data[4:])
