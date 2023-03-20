@@ -675,6 +675,14 @@ def reply_to_anon_message(message: types.Message):
     return
 
 
+@bot.message_handler(commands=['update'], func=lambda message: message.from_user.id == ADMIN)
+def update(message: types.Message):
+    import sys
+    import subprocess
+    subprocess.Popen('start.bat', creationflags=subprocess.CREATE_NEW_CONSOLE)
+    sys.exit()
+
+
 @bot.message_handler(content_types=['new_chat_members'], func=lambda message: message.chat.id == CHAT)
 def new_operator(message: types.Message):
     for user in message.new_chat_members:
