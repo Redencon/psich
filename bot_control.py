@@ -29,6 +29,7 @@ TOKEN = secret['TOKEN']
 ADMIN = secret['ADMIN']
 ARBITRARY_THRESHOLD = secret['ARBITRARY_THRESHOLD']
 CHAT = secret['CHAT']
+S = True
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -680,6 +681,8 @@ def update(message: types.Message):
     import sys
     import subprocess
     subprocess.Popen('start.bat', creationflags=subprocess.CREATE_NEW_CONSOLE)
+    global S
+    S = False
     sys.exit()
 
 
@@ -760,6 +763,6 @@ if __name__ == '__main__':
     forced_polls()
     set_commands()
     print('Начала работу')
-    while True:
+    while S:
         schedule.run_pending()
         time.sleep(1)

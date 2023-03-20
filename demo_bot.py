@@ -28,6 +28,7 @@ TOKEN = secret['TOKEN']
 ADMIN = secret['ADMIN']
 ARBITRARY_THRESHOLD = secret['ARBITRARY_THRESHOLD']
 CHAT = secret['CHAT']
+S = True
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -274,7 +275,15 @@ def setchat(message: types.Message):
         json.dump(secret, f, ensure_ascii=False, indent=4)
     bot.send_message(CHAT, 'Использую этот чат как чат операторов.')
     return
-    
+
+@bot.message_handler(commands=['update'], func=lambda message: message.from_user.id == ADMIN)
+def update(message: types.Message):
+    import sys
+    import subprocess
+    subprocess.Popen('start.bat', creationflags=subprocess.CREATE_NEW_CONSOLE)
+    global S
+    S = False
+    sys.exit()
 
 
 @bot.message_handler(commands=['start'])
@@ -742,6 +751,6 @@ if __name__ == '__main__':
     forced_polls()
     set_commands()
     print('Начала работу')
-    while True:
+    while S:
         schedule.run_pending()
         time.sleep(1)
