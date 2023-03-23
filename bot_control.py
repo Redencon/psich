@@ -30,6 +30,7 @@ ADMIN = secret['ADMIN']
 ARBITRARY_THRESHOLD = secret['ARBITRARY_THRESHOLD']
 CHAT = secret['CHAT']
 S = True
+RESPONSES_FOLDER = 'responses'
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -203,20 +204,20 @@ def dab_upd(filename, user_id, argument = None, **kwargs):
     return
 
 def new_response(user_id, key, answer):
-    with open('responses/'+str(user_id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
         user_db = json.load(file)
     if key in user_db['responses'].keys():
         return False
     user_db['responses'][key] = answer
-    with open('responses/'+str(user_id)+'.json', 'w') as file:
+    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'w') as file:
         json.dump(user_db, file)
     return True
 
 def dem_response(user_id, key, answer):
-    with open('responses/'+str(user_id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
         user_db = json.load(file)
     user_db['demog'][key] = answer
-    with open('responses/'+str(user_id)+'.json', 'w') as file:
+    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'w') as file:
         json.dump(user_db, file)
     return
 
@@ -250,7 +251,7 @@ def send_poll(time):
                 poll(user_id)
                 blkl.add(user_id)
             if last_today and users[user_id] != time:
-                with open('responses/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
+                with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
                     user_data = json.load(f)
                 if timestamp() not in user_data['responses'].keys():
                     bot.send_message(user_id, 'Я заметила, что ты ещё не заполнил(а) опрос. Пройди его, пожалуйста!')
@@ -285,7 +286,7 @@ def start(message):
         users = json.load(file)
     if str(message.from_user.id) not in users.keys():
         bot.send_message(message.chat.id, 'Для использования бота надо пройти верификацию, используя почту phystech.edu. Адрес будет удалён после верификации.\nВведите свой адрес почтового ящика в домене @phystech.edu:')
-        with open('responses/' + str(message.from_user.id) + '.json', 'w') as file:
+        with open(RESPONSES_FOLDER+'/' + str(message.from_user.id) + '.json', 'w') as file:
             json.dump({'demog': {}, 'responses': {}, 'code': None}, file)
         pend.add_pending(message.from_user.id)
     else:
@@ -311,7 +312,7 @@ def help(message):
 def start_response(call: types.CallbackQuery):
     bot.answer_callback_query(call.id, 'Спасибо.')
     bot.edit_message_text('Спасибо.', call.message.chat.id, call.message.id)
-    with open('responses/'+str(call.from_user.id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json') as file:
         user_db = json.load(file)
     if call.data[-1] == 'n':
         if 'lgbt' in user_db['demog'].keys():
@@ -410,7 +411,7 @@ def demogr(call: types.CallbackQuery):
         return
 
 def calendar(user_id, month, year):
-    with open('responses/'+str(user_id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
         data = json.load(file)
     stamp = time.mktime((year, month, 1, 0, 0, 0, 0, 0, -1))
     time_struct = time.localtime(stamp)
@@ -496,7 +497,7 @@ def wipe(call: types.CallbackQuery):
         bot.delete_message(call.message.chat.id, call.message.id)
         bot.delete_message(call.message.chat.id, call.message.id-1)
         return
-    os.remove('responses/'+str(call.from_user.id)+'.json')
+    os.remove(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json')
     dab_upd('status.json', call.from_user.id, None)
     chat_users.delete_user(call.from_user.id)
     bot.delete_message(call.message.chat.id, call.message.id)
@@ -505,7 +506,7 @@ def wipe(call: types.CallbackQuery):
 @bot.message_handler(func=lambda message: pend.check_pending(message.from_user.id) and message.text[0] != '/')
 def email(message: types.Message):
     response = message.text
-    with open('responses/'+str(message.from_user.id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json') as file:
         user_db = json.load(file)
     if response.isdigit():
         if user_db['code'] is not None:
@@ -529,7 +530,7 @@ def email(message: types.Message):
             return
         print(code)
         user_db['code'] = code
-        with open('responses/'+str(message.from_user.id)+'.json', 'w') as file:
+        with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json', 'w') as file:
             json.dump(user_db, file)
         bot.send_message(message.chat.id, 'На указанную почту было отправлено письмо с кодом подтверждения.\nОтправь мне полученный код.')
         return
@@ -557,7 +558,7 @@ def time_choose(call: types.CallbackQuery):
     bot.answer_callback_query(call.id, f'Вы выбрали время {TIMES[choice]}')
     dab_upd('status.json', call.from_user.id, TIMES[choice])
     if is_late(TIMES[choice]):
-        with open('responses/'+str(user_id)+'.json') as file:
+        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
             data = json.load(file)
         if timestamp() not in data['responses'].keys():
             poll(user_id)
@@ -573,11 +574,11 @@ def time_choose(call: types.CallbackQuery):
 def achievements(message: types.Message):
     with open('achievements.json', 'r', encoding='utf-8') as f:
         gen_data = json.load(f)
-    with open('responses/'+str(message.from_user.id)+'.json', 'r', encoding='utf-8') as f:
+    with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
     if 'achievements' not in data.keys():
         data['achievements'] = []
-        with open('responses/'+str(message.from_user.id)+'.json', 'w', encoding='utf-8') as f:
+        with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json', 'w', encoding='utf-8') as f:
             json.dump(data, f)
     bot.send_message(
         message.chat.id,
@@ -642,7 +643,7 @@ def anon_message(message: types.Message):
     user = chat_users.get_user_by_id(message.from_user.id)
     if user is None:
         user = chat_users.new_user(message.from_user.id, message.from_user.first_name)
-    with open('responses/'+str(message.from_user.id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json') as file:
         data = json.load(file)
     user.last_personal_message = message.id
     if timestamp() in data['responses'].keys():
@@ -699,7 +700,7 @@ def banned(update: types.ChatMemberUpdated):
     user = update.from_user.id
     if update.new_chat_member.status == 'kicked':
         chat_users.delete_user(user)
-        os.remove('responses/'+str(user)+'.json')
+        os.remove(RESPONSES_FOLDER+'/'+str(user)+'.json')
         dab_upd('status.json', user, None)
 
 
@@ -708,7 +709,7 @@ def forced_polls():
         users = json.load(file)
         users = {int(user_id):value for user_id, value in users.items()}
     for user_id in users:
-        with open('responses/'+str(user_id)+'.json') as file:
+        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
             data = json.load(file)
         if users[user_id] is not None and user_id not in blkl.dab:
             if timestamp() not in data['responses'].keys():
