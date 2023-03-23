@@ -20,127 +20,34 @@ from achievements import average_consistency_achievement
 from achievements import timestamp
 from achievements import achievement_message
 from requests.exceptions import ConnectionError
+import statusClasses
+import sys
 
-with open('secret2.json', 'r', encoding='utf-8') as f:
+SECRET_FILE = sys.argv[1]
+TIMES = ('08:15', '12:10', '15:20', '20:00')
+
+with open(SECRET_FILE, 'r', encoding='utf-8') as f:
     secret = json.load(f)
 
 TOKEN = secret['TOKEN']
 ADMIN = secret['ADMIN']
 ARBITRARY_THRESHOLD = secret['ARBITRARY_THRESHOLD']
 CHAT = secret['CHAT']
+RESPONSES_FOLDER = secret['RESPONSES_FOLDER']
+STATUS_FILE = secret['STATUS_FILE']
+POOL_FILE = secret['POOL_FILE']
+GENERAL_FILE = secret['GENERAL_FILE']
+PENDING_FILE = secret['PENDING_FILE']
+BLACKLIST_FILE = secret['BLACKLIST_FILE']
 S = True
 
 bot = telebot.TeleBot(TOKEN)
 
-TIMES = ('08:15', '12:10', '15:20', '20:00')
-
 chat_users = gpt_users.UserManager()
 
-class Blacklist:
-    def __init__(self) -> None:
-        if os.path.exists('blacklist2.json'):
-            with open('blacklist2.json') as file:
-                self.dab = json.load(file)
-        else:
-            self.clear()
-    
-    def dump(self):
-        with open('blacklist2.json', 'w') as file:
-            json.dump(self.dab, file)
-        return
-    
-    def add(self, user):
-        self.dab.append(user)
-        self.dump()
-
-    def clear(self):
-        self.dab = []
-        self.dump()
-
-class GeneralData:
-    def __init__(self):
-        with open('general.json') as file:
-            self.data = json.load(file)
-        return
-    
-    def dump(self):
-        with open('general.json', 'w') as file:
-            json.dump(self.data, file)
-        return
-
-    def new_day(self, key):
-        self.data[key] = {'total': 0, 'sum': 0}
-        adm_mess = bot.send_message(ADMIN, f'{timestamp()}\nСтатситика по опросу:\n0 ответов\nСредний результат: NaN')
-        self.data[key]['admin'] = adm_mess.id
-        self.data[key]['others'] = {}
-        self.dump()
-        return
-
-    def add_response(self, key, answer):
-        self.data[key]['total'] += 1
-        self.data[key]['sum'] += answer
-        self.update_admin(key)
-        self.dump()
-        return
-    
-    def update_admin(self, key):
-        hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']
-        text = f'{key}\nСтатситика по опросу:\n{self.data[key]["total"]} ответов\nСредний результат: {hearts[round(self.data[key]["sum"] / self.data[key]["total"])]}'
-        bot.edit_message_text(text, ADMIN, self.data[key]['admin'])
-        for user in self.data[key]['others']:
-            try:
-                bot.edit_message_text(
-                    f'Сегодня средний результат опроса: {hearts[round(self.data[key]["sum"] / self.data[key]["total"])]}',
-                    user,
-                    self.data[key]['others'][user]
-                )
-            except telebot.apihelper.ApiTelegramException:
-                print('It failed. Again :<')
-        return
-    
-    def today(self, user_id):
-        hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']
-        key = timestamp()
-        if self.data[key]['total'] < ARBITRARY_THRESHOLD:
-            bot.send_message(user_id, 'Недостаточно ответов за сегодня для подсчёта среднего.')
-            return
-        mess = bot.send_message(
-            user_id,
-            f'Сегодня средний результат опроса: {hearts[round(self.data[key]["sum"] / self.data[key]["total"])]}'
-        )
-        self.data[key]['others'][user_id] = mess.id
-        self.dump()
-        return
-        
-
-
-class Pending_users():
-    def __init__(self):
-        with open('pending2.json') as file:
-            self.dab = set(json.load(file))
-        return
-    
-    def dump(self):
-        with open('pending2.json', 'w') as file:
-            json.dump(list(self.dab), file)
-        return
-
-    def add_pending(self, user_id):
-        self.dab.add(user_id)
-        self.dump()
-    
-    def check_pending(self, user_id):
-        return user_id in self.dab
-    
-    def retreat_pending(self, user_id):
-        self.dab.discard(user_id)
-        self.dump()
-        return
-
-
-gens = GeneralData()
-pend = Pending_users()
-blkl = Blacklist()
+gens = statusClasses.GeneralData(GENERAL_FILE, bot, ADMIN)
+pend = statusClasses.Pending_users(PENDING_FILE)
+blkl = statusClasses.Blacklist(BLACKLIST_FILE)
 
 colorcoding = [
     '🟥',
@@ -202,20 +109,20 @@ def dab_upd(filename, user_id, argument = None, **kwargs):
     return
 
 def new_response(user_id, key, answer):
-    with open('responses2/'+str(user_id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
         user_db = json.load(file)
     if key in user_db['responses'].keys():
         return False
     user_db['responses'][key] = answer
-    with open('responses2/'+str(user_id)+'.json', 'w') as file:
+    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'w') as file:
         json.dump(user_db, file)
     return True
 
 def dem_response(user_id, key, answer):
-    with open('responses2/'+str(user_id)+'.json') as file:
+    with open(RESPONSES_FOLDER + '/'+str(user_id)+'.json') as file:
         user_db = json.load(file)
     user_db['demog'][key] = answer
-    with open('responses2/'+str(user_id)+'.json', 'w') as file:
+    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'w') as file:
         json.dump(user_db, file)
     return
 
@@ -235,7 +142,7 @@ def poll(user_id):
     bot.send_message(user_id, text, reply_markup=markup)
 
 def send_poll(time):
-    with open('status2.json') as file:
+    with open(STATUS_FILE) as file:
         users = json.load(file)
         users = {int(user_id):value for user_id, value in users.items()}
     last_today = time == TIMES[-1]
@@ -249,7 +156,7 @@ def send_poll(time):
                 poll(user_id)
                 blkl.add(user_id)
             if last_today and users[user_id] != time:
-                with open('responses2/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
+                with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
                     user_data = json.load(f)
                 if timestamp() not in user_data['responses'].keys():
                     bot.send_message(user_id, 'Я заметила, что ты ещё не заполнил(а) опрос. Пройди его, пожалуйста!')
@@ -271,7 +178,7 @@ def wanna_get(message):
 def setchat(message: types.Message):
     CHAT = message.chat.id
     secret['CHAT'] = CHAT
-    with open('secret.json', 'w', encoding='utf-8') as f:
+    with open(SECRET_FILE, 'w', encoding='utf-8') as f:
         json.dump(secret, f, ensure_ascii=False, indent=4)
     bot.send_message(CHAT, 'Использую этот чат как чат операторов.')
     return
@@ -288,11 +195,11 @@ def update(message: types.Message):
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    with open('status2.json') as file:
+    with open(STATUS_FILE) as file:
         users = json.load(file)
     if str(message.from_user.id) not in users.keys():
         bot.send_message(message.chat.id, 'Для использования бота надо пройти верификацию, используя электронную почту. Адрес будет удалён после верификации.\nВведите свой адрес:')
-        with open('responses2/' + str(message.from_user.id) + '.json', 'w') as file:
+        with open(RESPONSES_FOLDER+'/' + str(message.from_user.id) + '.json', 'w') as file:
             json.dump({'demog': {}, 'responses': {}, 'code': None}, file)
         pend.add_pending(message.from_user.id)
     else:
@@ -318,19 +225,19 @@ def help(message):
 def start_response(call: types.CallbackQuery):
     bot.answer_callback_query(call.id, 'Спасибо.')
     bot.edit_message_text('Спасибо.', call.message.chat.id, call.message.id)
-    with open('responses2/'+str(call.from_user.id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json') as file:
         user_db = json.load(file)
     if call.data[-1] == 'n':
         if 'lgbt' in user_db['demog'].keys():
-            dab_upd('status2.json', call.from_user.id, None)
+            dab_upd(STATUS_FILE, call.from_user.id, None)
         return
     if 'lgbt' in user_db['demog'].keys():
-        with open('status2.json') as file:
+        with open(STATUS_FILE) as file:
             statuses = json.load(file)
         if statuses[str(call.from_user.id)] is None:
             time_present(call.message)
         return
-    with open('pool.json') as file:
+    with open(POOL_FILE) as file:
         questions = json.load(file)
     options = questions[0][2]
     bot.edit_message_text(
@@ -361,7 +268,7 @@ def parse_survey(call: types.CallbackQuery):
         random.choice(responses[answer])
     )
     for i in (3, 7, 14, 30, 61, 150):
-        a = streak_achievement(call.from_user.id, i, 'responses2/')
+        a = streak_achievement(call.from_user.id, i, RESPONSES_FOLDER+'/')
         if a is not None:
             if a:
                 bot.send_message(call.message.chat.id, achievement_message('streak_'+str(i)))
@@ -382,10 +289,10 @@ def unsub(message):
 def unsub_check(call):
     if call.data[-1] == 'y':
         bot.answer_callback_query(call.id, 'Ну и замечательно.')
-        dab_upd('status2.json', call.from_user.id, TIMES[1])
+        dab_upd(STATUS_FILE, call.from_user.id, TIMES[1])
         bot.edit_message_text('Да будет так.', call.message.chat.id, call.message.id)
     else:
-        dab_upd('status2.json', call.from_user.id, None)
+        dab_upd(STATUS_FILE, call.from_user.id, None)
         bot.answer_callback_query(call.id, 'Да будет так.')
         bot.edit_message_text('Да будет так.', call.message.chat.id, call.message.id)
     return
@@ -393,7 +300,7 @@ def unsub_check(call):
 @bot.callback_query_handler(lambda call: call.data[:3] == 'DG_')
 def demogr(call: types.CallbackQuery):
     bot.answer_callback_query(call.id)
-    with open('pool2.json') as file:
+    with open(POOL_FILE) as file:
         questions = json.load(file)
     cur = int(call.data[3])
     ans = int(call.data[4:])
@@ -402,7 +309,7 @@ def demogr(call: types.CallbackQuery):
     if cur >= len(questions):
         bot.edit_message_text('Спасибо за участие в опросе', call.message.chat.id, call.message.id)
         time_present(call.message)
-        # dab_upd('status2.json', call.from_user.id, TIMES[1])
+        # dab_upd(STATUS_FILE, call.from_user.id, TIMES[1])
         bot.send_message(ADMIN, f'Новый пользователь: {call.from_user.full_name}')
         if time.localtime()[3] > 12 or (time.localtime()[3] == 12 and time.localtime()[4] > 10):
             poll(call.from_user.id)
@@ -417,7 +324,7 @@ def demogr(call: types.CallbackQuery):
         return
 
 def calendar(user_id, month, year):
-    with open('responses2/'+str(user_id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
         data = json.load(file)
     stamp = time.mktime((year, month, 1, 0, 0, 0, 0, 0, -1))
     time_struct = time.localtime(stamp)
@@ -445,7 +352,7 @@ def stats(message: types.Message):
             if curmonth > time.localtime()[1]:
                 curyear -= 1
     user = message.from_user.id
-    if add_achievement(message.from_user.id, 'stats', 'responses2/'):
+    if add_achievement(message.from_user.id, 'stats', RESPONSES_FOLDER+'/'):
         bot.send_message(message.chat.id, achievement_message('stats'))
     bot.send_message(
         message.chat.id,
@@ -491,7 +398,7 @@ def delete(message):
 
 @bot.message_handler(commands=['today'])
 def today(message):
-    if add_achievement(message.from_user.id, 'today', 'responses2/'):
+    if add_achievement(message.from_user.id, 'today', RESPONSES_FOLDER+'/'):
         bot.send_message(message.chat.id, achievement_message('today'))
     gens.today(message.from_user.id)
     return
@@ -503,8 +410,8 @@ def wipe(call: types.CallbackQuery):
         bot.delete_message(call.message.chat.id, call.message.id)
         bot.delete_message(call.message.chat.id, call.message.id-1)
         return
-    os.remove('responses2/'+str(call.from_user.id)+'.json')
-    dab_upd('status2.json', call.from_user.id, None)
+    os.remove(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json')
+    dab_upd(STATUS_FILE, call.from_user.id, None)
     chat_users.delete_user(call.from_user.id)
     bot.delete_message(call.message.chat.id, call.message.id)
     return
@@ -512,14 +419,14 @@ def wipe(call: types.CallbackQuery):
 @bot.message_handler(func=lambda message: pend.check_pending(message.from_user.id) and message.text[0] != '/')
 def email(message: types.Message):
     response = message.text
-    with open('responses2/'+str(message.from_user.id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json') as file:
         user_db = json.load(file)
     if response.isdigit():
         if user_db['code'] is not None:
             if int(response) == user_db['code']:
                 bot.send_message(message.chat.id, 'Успех!')
                 pend.retreat_pending(message.from_user.id)
-                dab_upd('status2.json', message.from_user.id, None)
+                dab_upd(STATUS_FILE, message.from_user.id, None)
                 wanna_get(message)
                 return
             else:
@@ -536,7 +443,7 @@ def email(message: types.Message):
             return
         print(code)
         user_db['code'] = code
-        with open('responses2/'+str(message.from_user.id)+'.json', 'w') as file:
+        with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json', 'w') as file:
             json.dump(user_db, file)
         bot.send_message(message.chat.id, 'На указанную почту было отправлено письмо с кодом подтверждения.\nОтправь мне полученный код.')
         return
@@ -562,9 +469,9 @@ def time_choose(call: types.CallbackQuery):
     user_id = call.from_user.id
     choice = int(call.data[3:])
     bot.answer_callback_query(call.id, f'Вы выбрали время {TIMES[choice]}')
-    dab_upd('status2.json', call.from_user.id, TIMES[choice])
+    dab_upd(STATUS_FILE, call.from_user.id, TIMES[choice])
     if is_late(TIMES[choice]):
-        with open('responses2/'+str(user_id)+'.json') as file:
+        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
             data = json.load(file)
         if timestamp() not in data['responses'].keys():
             poll(user_id)
@@ -580,11 +487,11 @@ def time_choose(call: types.CallbackQuery):
 def achievements(message: types.Message):
     with open('achievements.json', 'r', encoding='utf-8') as f:
         gen_data = json.load(f)
-    with open('responses2/'+str(message.from_user.id)+'.json', 'r', encoding='utf-8') as f:
+    with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json', 'r', encoding='utf-8') as f:
         data = json.load(f)
     if 'achievements' not in data.keys():
         data['achievements'] = []
-        with open('responses2/'+str(message.from_user.id)+'.json', 'w', encoding='utf-8') as f:
+        with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json', 'w', encoding='utf-8') as f:
             json.dump(data, f)
     bot.send_message(
         message.chat.id,
@@ -597,7 +504,7 @@ def thanks(message: types.Message):
     if add_achievement(
         chat_users.get_user_by_pseudonym(pseudonym).id,
         'good_conversation',
-        'responses2/'
+        RESPONSES_FOLDER+'/'
     ):
         bot.send_message(chat_users.get_user_by_pseudonym(pseudonym).id, achievement_message('good_conversation'))
 
@@ -614,7 +521,7 @@ def grant(message: types.Message):
     if text[1] not in gen_data.keys():
         return
     user = int(text[0])
-    if add_achievement(user, text[1], 'responses2/'):
+    if add_achievement(user, text[1], RESPONSES_FOLDER+'/'):
         bot.send_message(user, achievement_message(text[1]))
         bot.send_message(ADMIN, 'Добавил достижение.')
 
@@ -650,7 +557,7 @@ def anon_message(message: types.Message):
     user = chat_users.get_user_by_id(message.from_user.id)
     if user is None:
         user = chat_users.new_user(message.from_user.id, message.from_user.first_name)
-    with open('responses2/'+str(message.from_user.id)+'.json') as file:
+    with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json') as file:
         data = json.load(file)
     user.last_personal_message = message.id
     if timestamp() in data['responses'].keys():
@@ -687,7 +594,7 @@ def reply_to_anon_message(message: types.Message):
 @bot.message_handler(content_types=['new_chat_members'], func=lambda message: message.chat.id == CHAT)
 def new_operator(message: types.Message):
     for user in message.new_chat_members:
-        if add_achievement(user.id, 'operator', 'responses2/'):
+        if add_achievement(user.id, 'operator', RESPONSES_FOLDER+'/'):
             bot.send_message(user.id, achievement_message('operator'))
     bot.send_message(CHAT, 'Добро пожаловать в чат операторов Настеньки! Здесь можно отвечать на сообщения, которые пользователи пишут боту. Для этого надо использовать reply на сообщение, на которое хочется ответить. Наверху каждого сообщения есть уникальный псевдоним пользователя, по которому его можно опознать. Удачи!')
 
@@ -697,16 +604,16 @@ def banned(update: types.ChatMemberUpdated):
     user = update.from_user.id
     if update.new_chat_member.status == 'kicked':
         chat_users.delete_user(user)
-        os.remove('responses2/'+str(user)+'.json')
-        dab_upd('status2.json', user, None)
+        os.remove(RESPONSES_FOLDER+'/'+str(user)+'.json')
+        dab_upd(STATUS_FILE, user, None)
 
 
 def forced_polls():
-    with open('status2.json') as file:
+    with open(STATUS_FILE) as file:
         users = json.load(file)
         users = {int(user_id):value for user_id, value in users.items()}
     for user_id in users:
-        with open('responses2/'+str(user_id)+'.json') as file:
+        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
             data = json.load(file)
         if users[user_id] is not None and user_id not in blkl.dab:
             if timestamp() not in data['responses'].keys():
@@ -734,7 +641,7 @@ def set_commands(scope=types.BotCommandScopeDefault()):
 
 
 if __name__ == '__main__':
-    with open('status2.json') as file:
+    with open(STATUS_FILE) as file:
         users = json.load(file)
         users = {int(user_id):value for user_id, value in users.items()}
     for user in users:

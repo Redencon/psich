@@ -1,4 +1,4 @@
 @echo off
 TITLE psi_bot
 git pull origin
-python "bot_control.py" %*
+python "demo_bot.py" secret.json
