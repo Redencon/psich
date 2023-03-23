@@ -543,6 +543,17 @@ def run(message):
     bot.reply_to(message, 'Отправила опросы.')
     return
 
+@bot.message_handler(['report'], func=lambda m: m.chat.id == ADMIN)
+def send_report(_):
+    from report import make_report
+    a = make_report(RESPONSES_FOLDER)
+    with open(a, 'rb') as file:
+        bot.send_document(ADMIN, file, caption='Report for '+timestamp())
+    os.remove(a)
+    return
+
+
+
 def safe_send_message(chat_id, message):
     try:
         return bot.send_message(chat_id, message)
