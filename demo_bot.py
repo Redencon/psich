@@ -39,6 +39,7 @@ POOL_FILE = secret['POOL_FILE']
 GENERAL_FILE = secret['GENERAL_FILE']
 PENDING_FILE = secret['PENDING_FILE']
 BLACKLIST_FILE = secret['BLACKLIST_FILE']
+START_FILE = secret['START_FILE']
 S = True
 
 bot = telebot.TeleBot(TOKEN)
@@ -184,10 +185,10 @@ def setchat(message: types.Message):
     return
 
 @bot.message_handler(commands=['update'], func=lambda message: message.from_user.id == ADMIN)
-def update(message: types.Message):
+def update(_: types.Message):
     import sys
     import subprocess
-    subprocess.Popen('start2.bat', creationflags=subprocess.CREATE_NEW_CONSOLE)
+    subprocess.Popen(START_FILE, creationflags=subprocess.CREATE_NEW_CONSOLE)
     global S
     S = False
     sys.exit()
