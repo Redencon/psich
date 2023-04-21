@@ -298,7 +298,7 @@ def parse_survey(call: types.CallbackQuery):
     bot.answer_callback_query(call.id, service[lang]['poll_answer'].format(answer=hearts[answer]))
     if new_response(call.from_user.id, text[0], answer):
         gens.add_response(text[0], answer)
-    bot.edit_message_text('\n'.join(text) + service[lang]['poll_answer'].format(answer=hearts[answer]), call.message.chat.id, call.message.id, reply_markup=None)
+    bot.edit_message_text('\n'.join(text) + '\n'+service[lang]['poll_answer'].format(answer=hearts[answer]), call.message.chat.id, call.message.id, reply_markup=None)
     bot.send_message(
         call.message.chat.id,
         random.choice(responses[lang][answer])
