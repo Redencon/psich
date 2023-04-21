@@ -1,4 +1,16 @@
 ru:
+  description:
+    - |
+      Бот ежедневных опросов настроения
+      Админ: @Folegle
+      Версия для общего пользования:
+      @Redencon_PSI_bot
+    - |
+      Бот ежедневный опросов настроения
+      Админ: @Folegle
+      Версия для студентов МФТИ:
+      @MKI_PSI_bot
+  short_description: Ежедневные опросы настроения
   responses:
     0:
       - О БОЖЕ, КАК ЖЕ ТЫ ХОРОШ
@@ -161,6 +173,18 @@ ru:
     language: Выбрать язык
     delete: УДАЛИТЬ ДАННЫЕ
 en:
+  description:
+    - |
+      Bot for daily mood polls
+      Bot Admin: @Folegle
+      Version for non-MIPT users:
+      @Redencon_PSI_bot
+    - |
+      Bot for daily mood polls
+      Bot Admin: @Folegle
+      Version for MIPT users:
+      @MKI_PSI_bot
+  short_description: Daily mood polls bot
   responses:
     0:
       - OH MY GOD, YOU'RE SO GOOD!

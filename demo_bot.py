@@ -52,6 +52,8 @@ with open(LOC_FILE, 'r', encoding='utf-8') as file:
     responses = {key: all_text[key]['responses'] for key in all_text}
     achievements_d = {key: all_text[key]['achievements'] for key in all_text}
     help_d = {key: all_text[key]['help'] for key in all_text}
+    description = {key: all_text[key]['description'][0 if TOKEN[0]=='5' else 1] for key in all_text}
+    short_description = {key: all_text[key]['short_description'] for key in all_text}
     del all_text
 
 
@@ -753,6 +755,11 @@ if __name__ == '__main__':
         blkl.add(timestamp())
     forced_polls()
     set_commands(types.BotCommandScope())
+    for lang in ('ru', 'en'):
+        bot.set_my_description(description[lang], lang)
+        bot.set_my_short_description(short_description[lang], lang)
+        del description
+        del short_description
     print('Начала работу')
     while S:
         schedule.run_pending()
