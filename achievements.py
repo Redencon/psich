@@ -1,6 +1,6 @@
 import json
 import time
-
+import yaml
 
 
 def timestamp():
@@ -89,7 +89,12 @@ def average_consistency_achievement(user_id:int, amount: int, DIRECTORY = 'respo
     return False
 
 
-def achievement_message(name):
-    with open('achievements.json', 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    return '🎉Новое достижение🎉: '+data[name]['name']+'!\n\n'+data[name]['congrats']
+def achievement_message(name, lang='ru'):
+    with open('loc.yaml', 'r', encoding='utf-8') as file:
+        all_text = yaml.safe_load(file)
+        achievements_d = {key: all_text[key]['achievements'] for key in all_text}
+        service = {key: all_text[key]['service'] for key in all_text}
+        del all_text
+    return (service[lang]['new_achievement']
+            +achievements_d[lang][name]['name']
+            +'!\n\n'+achievements_d[lang][name]['congrats'])

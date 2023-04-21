@@ -82,3 +82,88 @@
 "Выводит средний результат сегодняшнего опроса среди всех пользователей. Обновляется автоматически."
 "Показывает все полученные достижения. Достижения выдаются при выполнении определённых действий. Попробуй собрать все достижения по участию в опросе несколько дней подряд!"
 "Удаляет все данные этого пользователя из базы Настеньки. Необратимо. После удаления можно заново создать аккаунт используя /start
+
+# ENG
+## Responses
+  - OH MY GOD, YOU'RE SO GOOD!
+- Well that's wonderful that you're so in tune!
+  - I am very happy for you! What was so joyful about your day?
+- How lovely that you're having such a beautiful day!
+  - Glad to hear that everything is going so smoothly for you. Can you tell me what made you feel so good?
+- That's awesome! Tell me what's new in your life?
+- How great is it that you're doing well!
+  - Good is not bad at all! So tell me, how is your day going?
+  - I'm glad to hear that you're doing well. I'm always happy to hear from you.
+  - That's great that you are in a good mood! Tell me, what made you feel so good?
+- Fine is already good! Tell me what's new?
+  - I understand that there are days like this. But still, I wonder how your day is going?
+  - I am glad to see that you are doing well. Remember that I will always be here to listen to you <3
+  - I understand that there are days like this. Maybe you can tell me what happened?
+  - Sorry to see, but can you tell me what would help improve your mood?
+  - Don't worry, it happens. Maybe sharing your thoughts would help?
+  - I'm sorry you're having a hard time. If you need to talk, I'm always ready to listen to you.
+  - I hope you feel better soon. is there anything I can do to help you?
+- We all have down moments sometimes. Don't be afraid to ask your loved ones for help and you will become stronger.
+  - I'm sorry you're in a bad mood. If you need help, I'm always there for you.
+  - I feel for you wholeheartedly. Feel free to ask for help if you feel like you're not doing well.
+  - I'm sorry if my questioning hurt you. If you want, we can try to do something to improve your condition.
+
+## Achievments
+"First Steps."
+"Responding to Nastenka's daily surveys 3 days in a row."
+"You've been answering my surveys for 3 days in a row now! Keep up the good work!
+"Stable week."
+"Responding to Nastenka's daily surveys 7 days in a row."
+"You haven't missed a poll in the last week! I'm impressed with your stability.
+"Two weeks!"
+"Responding to Nastenka's daily polls for 14 consecutive days."
+"Two weeks without a skip! I'm very happy to see such devotion.
+"One month!"
+"Responding to Nastenka's daily surveys 30 days in a row."
+"Not one skip in a month! I'm so glad you're participating in my surveys. A virtual hug from the admin team (and myself <3)
+"TWO MONTHS?"
+"Answering Nastenka's daily surveys 61 days in a row."
+"You and I have been participating in these polls for two months now. I think we've managed to become friends in that time :)
+"SEMESTER."
+"Answering Nastenka's daily surveys for 150 days in a row."
+"You haven't missed a single question all semester. I want to thank you personally. Write to admin @Folegle."
+"Halfway through the month."
+"Answer 15 surveys this month."
+"We went through the survey 15 times this month. That's impressive to me!
+"Full month."
+"Reply to 30 surveys this month."
+"You answered (almost?) every survey this semester! You'll probably really enjoy looking at /stats one more time
+"Talking heart-to-heart."
+"Write Nastenka a message."
+"You and I haven't had this kind of personal interaction yet... Don't worry, I read your messages carefully and will try to respond as quickly as possible!
+"Multicolored calendar."
+"See the stats for the month."
+"Here it is - your mood calendar. It's interesting to see how your mood has changed over time, isn't it?
+"Look around."
+"To see the average poll result for today."
+"Oh, I see you're wondering how others are doing? Here you go, you're welcome!
+"A pleasant conversation."
+"Getting praise from the moderating team."
+"You are a very pleasant conversationalist. I think that's worthy of a little praise on our part <3
+"Help the Admin."
+"Help the Admin with the development of Nastenka."
+"Admin personally would like to thank you so much for helping me develop Nastenka. I'm glad that such good people helped to create me. Thank you.
+"Operator."
+"Become Nastenka's Operator."
+"Now you are my mouth and my eyes. I hope that together we can help our users feel better.
+"ADMIN"
+"You are Nastenka's creator."
+"You can't praise yourself, as they say.
+"Friend of the Admin."
+"You're a friend of the Admin and he's very happy that you're the one using Nastenka."
+"Hi! Admin wanted to give you a personal thank you for being in touch with me. I hope we all make a great project out of me together!
+
+## HELP.
+"Command Start. Helps you restart your sign-in process if something has gone wrong or your account has been deleted."
+"Command for instructions on how to use other commands. Write the name of the command you don't understand after /help. Also notice that you can send messages without commands to talk to Nastenka."
+"The command to select the time of the poll. After sending offers buttons with all currently available times. You can change the send time at any time. Nastenka will send exactly one poll per day, regardless of using this command."
+"Command to unsubscribe/unsubscribe from daily polls. After sending the command, you have to click the button in the message to subscribe/subscribe."
+"Displays a calendar with this month's personal poll results. If you write the month number after the command, it will display the results for the selected month. You can also use the buttons to toggle."
+"Displays the average result of today's poll among all users. Refreshed automatically."
+"Shows all achievements received. Achievements are given when certain actions are performed. Try to collect all the achievements by participating in the survey several days in a row!"
+"Deletes all data of this user from Nastenka's database. Irreversible. After being deleted, you can recreate the account using /start"

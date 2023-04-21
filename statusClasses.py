@@ -102,6 +102,7 @@ class Pending_users():
         self.dump()
     
     def check_pending(self, user_id):
+        '''Is user in pending list?'''
         return user_id in self.dab
     
     def retreat_pending(self, user_id):
