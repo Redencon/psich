@@ -318,7 +318,7 @@ en:
     help: Get help with commands
     time: Choose poll time
     sub: on/off poll
-    stats: Monthly data
+    stats: Monthly data 
     today: Today's average
     achievements: Get Achievements
     language: Set language
