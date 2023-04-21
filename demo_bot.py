@@ -402,7 +402,7 @@ def stats(message: types.Message):
         bot.send_message(message.chat.id, achievement_message('stats', lang))
     bot.send_message(
         message.chat.id,
-        service[lang]['stats']+ str(curmonth) + '/' + str(curyear) +':\n'+calendar(user, curmonth, curyear),
+        service[lang]['stats']+' '+ str(curmonth) + '/' + str(curyear) +':\n'+calendar(user, curmonth, curyear),
         reply_markup=types.InlineKeyboardMarkup([[
             types.InlineKeyboardButton('◀️', callback_data='SS_-'),
             types.InlineKeyboardButton('▶️', callback_data='SS_+')
@@ -426,7 +426,7 @@ def switch_calendar(call: types.CallbackQuery):
             year -= 1
             month = 12
     bot.edit_message_text(
-        service[lang]['stats']+ str(month) + '/' + str(year) +':\n'+calendar(call.from_user.id, month, year),
+        service[lang]['stats']+' '+ str(month) + '/' + str(year) +':\n'+calendar(call.from_user.id, month, year),
         call.message.chat.id,
         call.message.id,
         reply_markup=call.message.reply_markup
