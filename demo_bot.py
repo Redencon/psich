@@ -600,6 +600,33 @@ def run(message):
     bot.reply_to(message, 'Отправила опросы.')
     return
 
+@bot.message_handler(['language'])
+def language(message: types.Message):
+    bot.send_message(
+        message.chat.id,
+        'Выбери язык/Choose language',
+        reply_markup=types.InlineKeyboardMarkup([[
+            types.InlineKeyboardButton('Русский', callback_data='LG_ru'),
+            types.InlineKeyboardButton('English', callback_data='LG_en')
+        ]])
+    )
+
+@bot.callback_query_handler(func = lambda call: call.data[:3] == 'LG_')
+def language_choice(call: types.CallbackQuery):
+    with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json', 'r') as file:
+        user_data = json.load(file)
+    user_data['lang'] = call.data[3:]
+    with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json', 'w') as file:
+        json.dump(user_data, file)
+    bot.answer_callback_query(call.id, call.data[3:])
+    bot.edit_message_text(
+        service[call.data[3:]]['language'],
+        call.message.chat.id,
+        call.message.id
+    )
+    
+
+
 @bot.message_handler(['report'], func=lambda m: m.chat.id == ADMIN)
 def send_report(_):
     from report import make_report
@@ -699,7 +726,7 @@ def forced_polls():
 
 def set_commands(scope=types.BotCommandScopeDefault):
     for lang in ('ru', 'en'):
-        # bot.delete_my_commands(scope=scope, language_code=lang)
+        bot.delete_my_commands(scope=scope, language_code=lang)
         bot.set_my_commands([
             types.BotCommand(name, commands[lang][name])
             for name
@@ -713,11 +740,11 @@ if __name__ == '__main__':
     with open(STATUS_FILE) as file:
         users = json.load(file)
         users = {int(user_id):value for user_id, value in users.items()}
-    # for user in users:
-    #     try:
-    #         set_commands(types.BotCommandScopeChat(user))
-    #     except telebot.apihelper.ApiTelegramException:
-    #         print('There\'s no chat with user', user)
+    for user in users:
+        try:
+            set_commands(types.BotCommandScopeChat(user))
+        except telebot.apihelper.ApiTelegramException:
+            print('There\'s no chat with user', user)
     for elem in TIMES:
         schedule.every().day.at(elem).do(send_poll, elem)
     threading.Thread(target=bot.infinity_polling, name='bot_infinity_polling', daemon=True).start()
@@ -725,7 +752,7 @@ if __name__ == '__main__':
         blkl.clear()
         blkl.add(timestamp())
     forced_polls()
-    # set_commands()
+    set_commands(types.BotCommandScope())
     print('Начала работу')
     while S:
         schedule.run_pending()

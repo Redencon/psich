@@ -71,6 +71,7 @@ ru:
     delete: |
       Вы уверены, что хотите удалить все свои данные?
       ДЕЙСТВИЕ НЕОБРАТИМО
+    language: Вы выбрали русский язык
     yes: Да
     no: Нет
     ok: ОК
@@ -147,6 +148,7 @@ ru:
     stats: Выводит календарь с персональными результатами опроса в этом месяце. Если после команды написать номер месяца, то отобразит результаты за выбранный месяц. Переключение также возможно с помощью кнопок
     today: Выводит средний результат сегодняшнего опроса среди всех пользователей. Обновляется автоматически.
     achievements: Показывает все полученные достижения. Достижения выдаются при выполнении определённых действий. Попробуй собрать все достижения по участию в опросе несколько дней подряд!
+    language: Настройка языка, на котором будет говорить бот с тобой. Выбор возможен между русским и английским.
     delete: Удаляет все данные этого пользователя из базы ПСИ-бота. Необратимо. После удаления можно заново создать аккаунт используя /start
   commands:
     start: Начать работу с ботом
@@ -156,6 +158,7 @@ ru:
     stats: Данные за месяц
     today: Среднее за сегодня
     achievements: Достижения
+    language: Выбрать язык
     delete: УДАЛИТЬ ДАННЫЕ
 en:
   responses:
@@ -231,6 +234,7 @@ en:
     delete: |
       Are you sure you want to delete all your data?
       THIS ACTION IS IRREVERSIBLE
+    language: You've chosen English language
     yes: "Yes"
     no: "No"
     ok: OK
@@ -307,6 +311,7 @@ en:
     stats: Displays a calendar with this month's personal poll results. If you write the month number after the command, it will display the results for the selected month. You can also use the buttons to toggle.
     today: Displays the average result of today's poll among all users. Refreshed automatically.
     achievements: Shows all achievements received. Achievements are given when certain actions are performed. Try to collect all the achievements by participating in the survey several days in a row!
+    language: Choose bot language. Options are russian and english languages.
     delete: Deletes all data of this user from PSI_bot's database. Irreversible. After being deleted, you can recreate the account using /start
   commands:
     start: Start bit using / get help
@@ -316,4 +321,5 @@ en:
     stats: Monthly data
     today: Today's average
     achievements: Get Achievements
+    language: Set language
     delete: DELETE ALL DATA
