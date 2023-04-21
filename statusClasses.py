@@ -48,6 +48,8 @@ class GeneralData:
         return
 
     def add_response(self, key, answer):
+        if key not in self.data:
+            self.new_day(key)
         self.data[key]['total'] += 1
         self.data[key]['sum'] += answer
         self.update_admin(key)
@@ -102,6 +104,7 @@ class Pending_users():
         self.dump()
     
     def check_pending(self, user_id):
+        '''Is user in pending list?'''
         return user_id in self.dab
     
     def retreat_pending(self, user_id):
