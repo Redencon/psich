@@ -1,6 +1,6 @@
 '''
 Настенька
-v. 0.0.17
+v. 0.1.1
 '''
 
 import os
@@ -49,7 +49,7 @@ with open(LOC_FILE, 'r', encoding='utf-8') as file:
     all_text = yaml.safe_load(file)
     service = {key: all_text[key]['service'] for key in all_text}
     commands = {key: all_text[key]['commands'] for key in all_text}
-    responses = {key: all_text[key]['respones'] for key in all_text}
+    responses = {key: all_text[key]['responses'] for key in all_text}
     achievements_d = {key: all_text[key]['achievements'] for key in all_text}
     help_d = {key: all_text[key]['help'] for key in all_text}
     del all_text
@@ -189,7 +189,10 @@ def get_lang(user: types.User):
     with open(RESPONSES_FOLDER+'/'+str(user.id)+'.json', 'r') as file:
         user_db = json.load(file)
     if 'lang' not in user_db.keys():
-        user_db['lang'] = user.language_code
+        if user.language_code in ('ru', 'en'):
+            user_db['lang'] = user.language_code
+        else:
+            user_db['lang'] = 'en'
         with open(RESPONSES_FOLDER+'/'+str(user.id)+'.json', 'w') as file:
             json.dump(user_db, file)
     return user_db['lang']
@@ -222,8 +225,12 @@ def start(message: types.Message):
         with open(RESPONSES_FOLDER+'/' + str(message.from_user.id) + '.json', 'w') as file:
             json.dump({'demog': {}, 'responses': {}, 'code': None}, file)
         lang = get_lang(message.from_user)
-        bot.send_message(message.chat.id, service[lang]['verification'])
-        pend.add_pending(message.from_user.id)
+        if DOMEN is not None:
+            bot.send_message(message.chat.id, service[lang]['verisfication'])
+            pend.add_pending(message.from_user.id)
+        else:
+            dab_upd(STATUS_FILE, message.from_user.id, None)
+            wanna_get(message)
     else:
         # Start is equal to /help when user is not new
         lang = get_lang(message.from_user)
@@ -336,11 +343,11 @@ def demogr(call: types.CallbackQuery):
     cur += 1
     if cur >= len(questions[lang]):
         bot.edit_message_text(service[lang]['demog_end'], call.message.chat.id, call.message.id)
-        time_present(call.message)
+        time_present(call.message, lang)
         # dab_upd(STATUS_FILE, call.from_user.id, TIMES[1])
         bot.send_message(ADMIN, f'Новый пользователь: {call.from_user.full_name}')
-        if time.localtime()[3] > 12 or (time.localtime()[3] == 12 and time.localtime()[4] > 10):
-            poll(call.from_user.id, lang)
+        # if time.localtime()[3] > 12 or (time.localtime()[3] == 12 and time.localtime()[4] > 10):
+        #     poll(call.from_user.id, lang)
         return
     else:
         bot.edit_message_text(
@@ -493,8 +500,9 @@ def email(message: types.Message):
         return
 
 @bot.message_handler(commands=['time'])
-def time_present(message: types.Message):
-    lang = get_lang(message.from_user)
+def time_present(message: types.Message, lang = None):
+    if lang is None:
+        lang = get_lang(message.from_user)
     markup = [[]]
     linewidth = len(TIMES) // 2 if len(TIMES) // 2 < 4 else 4
     for i, elem in enumerate(TIMES):
@@ -657,7 +665,7 @@ def new_operator(message: types.Message):
         lang = get_lang(user)
         if add_achievement(user.id, 'operator', RESPONSES_FOLDER+'/'):
             bot.send_message(user.id, achievement_message('operator', lang))
-    bot.send_message(CHAT, 'Добро пожаловать в чат операторов Настеньки! Здесь можно отвечать на сообщения, которые пользователи пишут боту. Для этого надо использовать reply на сообщение, на которое хочется ответить. Наверху каждого сообщения есть уникальный псевдоним пользователя, по которому его можно опознать. Удачи!')
+        bot.send_message(CHAT, service[lang]['new_operator'])
 
 
 @bot.my_chat_member_handler()
@@ -691,7 +699,7 @@ def forced_polls():
 
 def set_commands(scope=types.BotCommandScopeDefault):
     for lang in ('ru', 'en'):
-        bot.delete_my_commands(scope=scope, language_code=lang)
+        # bot.delete_my_commands(scope=scope, language_code=lang)
         bot.set_my_commands([
             types.BotCommand(name, commands[lang][name])
             for name
@@ -705,11 +713,11 @@ if __name__ == '__main__':
     with open(STATUS_FILE) as file:
         users = json.load(file)
         users = {int(user_id):value for user_id, value in users.items()}
-    for user in users:
-        try:
-            set_commands(types.BotCommandScopeChat(user))
-        except telebot.apihelper.ApiTelegramException:
-            print('There\'s no chat with user', user)
+    # for user in users:
+    #     try:
+    #         set_commands(types.BotCommandScopeChat(user))
+    #     except telebot.apihelper.ApiTelegramException:
+    #         print('There\'s no chat with user', user)
     for elem in TIMES:
         schedule.every().day.at(elem).do(send_poll, elem)
     threading.Thread(target=bot.infinity_polling, name='bot_infinity_polling', daemon=True).start()
@@ -717,7 +725,7 @@ if __name__ == '__main__':
         blkl.clear()
         blkl.add(timestamp())
     forced_polls()
-    set_commands()
+    # set_commands()
     print('Начала работу')
     while S:
         schedule.run_pending()
