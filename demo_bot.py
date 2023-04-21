@@ -230,7 +230,7 @@ def start(message: types.Message):
             json.dump({'demog': {}, 'responses': {}, 'code': None}, file)
         lang = get_lang(message.from_user)
         if DOMEN is not None:
-            bot.send_message(message.chat.id, service[lang]['verisfication'])
+            bot.send_message(message.chat.id, service[lang]['verification'])
             pend.add_pending(message.from_user.id)
         else:
             dab_upd(STATUS_FILE, message.from_user.id, None)
