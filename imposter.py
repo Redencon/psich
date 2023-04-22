@@ -15,7 +15,7 @@ bot = telebot.TeleBot(TOKEN)
 # with open('goodnight.json', 'r') as file:
 #     gn = json.load(file)
 
-with open('Nastya_Dicks.ogg', 'rb') as f:
+with open('goodnight/Nastya_Dicks.ogg', 'rb') as f:
     mess = bot.send_voice(ADMIN, f)
 bot.send_voice(5050678382, mess.voice.file_id)
 # for user in [834476079, 264630131, 1311246531]:

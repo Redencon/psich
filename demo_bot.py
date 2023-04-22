@@ -274,6 +274,7 @@ def start_response(call: types.CallbackQuery):
         if statuses[str(call.from_user.id)] is None:
             time_present(call.message)
         return
+    # SEND DEMOG POLL
     with open(POOL_FILE) as file:
         questions = json.load(file)
     options = questions[lang][0][2]
@@ -281,7 +282,11 @@ def start_response(call: types.CallbackQuery):
         service[lang]['demog_init']+'\n'+questions[lang][0][1],
         call.message.chat.id,
         call.message.id,
-        reply_markup=types.InlineKeyboardMarkup([[types.InlineKeyboardButton(text, callback_data='DG_0'+str(i)) for i, text in enumerate(options)]])
+        reply_markup=types.InlineKeyboardMarkup([[
+            types.InlineKeyboardButton(text, callback_data='DG_0'+str(i))
+            for i, text 
+            in enumerate(options)
+        ]])
     )
     return
 
@@ -328,6 +333,7 @@ def unsub_check(call: types.CallbackQuery):
     if call.data[-1] == 'y':
         bot.answer_callback_query(call.id, service[lang]['unsub_no'])
         dab_upd(STATUS_FILE, call.from_user.id, TIMES[1])
+        # TODO: send time choosing message
         bot.edit_message_text(service[lang]['unsub_no'], call.message.chat.id, call.message.id)
     else:
         dab_upd(STATUS_FILE, call.from_user.id, None)
@@ -640,6 +646,26 @@ def send_report(_):
     os.remove(a)
     return
 
+@bot.message_handler(['demog'])
+def demog_manual(message: types.Message):
+    with open(POOL_FILE) as file:
+        questions = json.load(file)
+    options = questions[lang][0][2]
+    bot.send_message(
+        message.chat.id,
+        service[lang]['demog_init']+'\n'+questions[lang][0][1],
+        reply_markup=types.InlineKeyboardMarkup([[
+            types.InlineKeyboardButton(text, callback_data='DG_0'+str(i))
+            for i, text
+            in enumerate(options)
+        ]])
+    )
+    dab_upd(
+        STATUS_FILE,
+        message.from_user.id,
+        None
+    )
+
 
 
 def safe_send_message(chat_id, message):
@@ -649,7 +675,10 @@ def safe_send_message(chat_id, message):
         time.sleep(3)
         return safe_send_message(chat_id, message)
 
-@bot.message_handler(content_types=['text'], func= lambda message: message.from_user.id == message.chat.id and message.text[0] != '/')
+@bot.message_handler(content_types=['text'],
+                     func = lambda message:
+                     message.from_user.id == message.chat.id 
+                     and message.text[0] != '/')
 def anon_message(message: types.Message):
     text = message.text
     hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']
@@ -673,7 +702,10 @@ def anon_message(message: types.Message):
     return
 
 
-@bot.message_handler(content_types=['text'], func=lambda message: message.chat.id == CHAT and message.reply_to_message is not None)
+@bot.message_handler(content_types=['text'],
+                     func=lambda message:
+                     message.chat.id == CHAT 
+                     and message.reply_to_message is not None)
 def reply_to_anon_message(message: types.Message):
     if message.reply_to_message.from_user.id != bot.get_me().id:
         return
@@ -690,7 +722,8 @@ def reply_to_anon_message(message: types.Message):
     return
 
 
-@bot.message_handler(content_types=['new_chat_members'], func=lambda message: message.chat.id == CHAT)
+@bot.message_handler(content_types=['new_chat_members'],
+                     func=lambda message: message.chat.id == CHAT)
 def new_operator(message: types.Message):
     for user in message.new_chat_members:
         lang = get_lang(user)
@@ -751,7 +784,11 @@ if __name__ == '__main__':
             print('There\'s no chat with user', user)
     for elem in TIMES:
         schedule.every().day.at(elem).do(send_poll, elem)
-    threading.Thread(target=bot.infinity_polling, name='bot_infinity_polling', daemon=True).start()
+    threading.Thread(
+        target=bot.infinity_polling,
+        name='bot_infinity_polling',
+        daemon=True
+    ).start()
     if timestamp() not in blkl.dab:
         blkl.clear()
         blkl.add(timestamp())
@@ -759,7 +796,10 @@ if __name__ == '__main__':
     set_commands(types.BotCommandScope())
     for lang in ('ru', 'en'):
         bot.set_my_description(description[lang], language_code=lang)
-        bot.set_my_short_description(short_description[lang], language_code=lang)
+        bot.set_my_short_description(
+            short_description[lang],
+            language_code=lang
+        )
     del description
     del short_description
     print('Начала работу')
