@@ -342,6 +342,7 @@ def start_response(call: types.CallbackQuery):
         if statuses[str(call.from_user.id)] is None:
             time_present(call.message)
         return
+    # SEND DEMOG POLL
     with open(POOL_FILE) as file:
         questions = json.load(file)
     options = questions[lang][0][2]
@@ -810,6 +811,26 @@ def send_report(_):
     os.remove(a)
     return
 
+@bot.message_handler(['demog'])
+def demog_manual(message: types.Message):
+    with open(POOL_FILE) as file:
+        questions = json.load(file)
+    options = questions[lang][0][2]
+    bot.send_message(
+        message.chat.id,
+        service[lang]['demog_init']+'\n'+questions[lang][0][1],
+        reply_markup=types.InlineKeyboardMarkup([[
+            types.InlineKeyboardButton(text, callback_data='DG_0'+str(i))
+            for i, text
+            in enumerate(options)
+        ]])
+    )
+    dab_upd(
+        STATUS_FILE,
+        message.from_user.id,
+        None
+    )
+
 
 def safe_send_message(chat_id, message):
     try:
@@ -941,7 +962,10 @@ if __name__ == "__main__":
     set_commands(types.BotCommandScope())
     for lang in ("ru", "en"):
         bot.set_my_description(description[lang], language_code=lang)
-        bot.set_my_short_description(short_description[lang], language_code=lang)
+        bot.set_my_short_description(
+            short_description[lang],
+            language_code=lang
+        )
     del description
     del short_description
     print("Начала работу")
