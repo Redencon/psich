@@ -201,6 +201,28 @@ def get_lang(user: types.User):
             json.dump(user_db, file)
     return user_db['lang']
 
+def demog_init(user_id: int, chat_id: int = None, message_id: int = None):
+    '''Send the first message of demography poll.
+Provide chat and message id to edit a previous message into it instead
+'''
+    with open(POOL_FILE) as file:
+        questions = json.load(file)
+    options = questions[lang][0][2]
+    kwargs = dict(
+        text = service[lang]['demog_init']+'\n'+questions[lang][0][1],
+        chat_id = chat_id if chat_id is not None else user_id,
+        reply_markup = types.InlineKeyboardMarkup([[
+            types.InlineKeyboardButton(text, callback_data='DG_0'+str(i))
+            for i, text 
+            in enumerate(options)
+        ]])
+    )
+    if message_id is not None and chat_id is not None:
+        kwargs['message_id'] = message_id
+        bot.edit_message_text(**kwargs)
+    else:
+        bot.send_message(**kwargs)
+
 
 @bot.message_handler(commands=['setchat'], func=lambda message: message.from_user.id == ADMIN)
 def setchat(message: types.Message):
@@ -275,18 +297,10 @@ def start_response(call: types.CallbackQuery):
             time_present(call.message)
         return
     # SEND DEMOG POLL
-    with open(POOL_FILE) as file:
-        questions = json.load(file)
-    options = questions[lang][0][2]
-    bot.edit_message_text(
-        service[lang]['demog_init']+'\n'+questions[lang][0][1],
+    demog_init(
+        call.from_user.id,
         call.message.chat.id,
-        call.message.id,
-        reply_markup=types.InlineKeyboardMarkup([[
-            types.InlineKeyboardButton(text, callback_data='DG_0'+str(i))
-            for i, text 
-            in enumerate(options)
-        ]])
+        call.message.id
     )
     return
 
@@ -648,24 +662,25 @@ def send_report(_):
 
 @bot.message_handler(['demog'])
 def demog_manual(message: types.Message):
-    with open(POOL_FILE) as file:
-        questions = json.load(file)
-    options = questions[lang][0][2]
-    bot.send_message(
-        message.chat.id,
-        service[lang]['demog_init']+'\n'+questions[lang][0][1],
-        reply_markup=types.InlineKeyboardMarkup([[
-            types.InlineKeyboardButton(text, callback_data='DG_0'+str(i))
-            for i, text
-            in enumerate(options)
-        ]])
-    )
+    demog_init(message.from_user.id)
     dab_upd(
         STATUS_FILE,
         message.from_user.id,
         None
     )
 
+
+@bot.message_handler(['forcedemog'],
+                     lambda m: m.from_user.id == ADMIN)
+def force_demog(_: types.Message):
+    with open(STATUS_FILE) as file:
+        users = json.load(file)
+        users = {int(user_id):value for user_id, value in users.items()}
+    for user in users:
+        if users[user] is not None:
+            demog_init(user)
+            dab_upd(STATUS_FILE, user, None)
+    bot.send_message(ADMIN, 'Sent renewed demog polls')
 
 
 def safe_send_message(chat_id, message):
