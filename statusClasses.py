@@ -59,7 +59,13 @@ class GeneralData:
     def update_admin(self, key):
         hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']
         text = f'{key}\nСтатситика по опросу:\n{self.data[key]["total"]} ответов\nСредний результат: {hearts[round(self.data[key]["sum"] / self.data[key]["total"])]}'
-        self.bot.edit_message_text(text, self.ADMIN, self.data[key]['admin'])
+        try:
+            self.bot.edit_message_text(text, self.ADMIN, self.data[key]['admin'])
+        except telebot.apihelper.ApiTelegramException:
+            adm_mess = self.bot.send_message(self.ADMIN, text)
+            self.data[key]['admin'] = adm_mess.id
+            self.data[key]['others'] = {}
+            self.dump()
         for user in self.data[key]['others']:
             try:
                 self.bot.edit_message_text(
