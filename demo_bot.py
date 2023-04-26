@@ -160,13 +160,13 @@ def send_poll(time):
         blkl.clear()
         blkl.add(timestamp())
     for user_id in users:
-        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
-            user_data = json.load(f)
-        if 'lang' not in user_data:
-            lang = 'ru'
-        else:
-            lang = user_data['lang']
         if users[user_id] is not None:
+            with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
+                user_data = json.load(f)
+            if 'lang' not in user_data:
+                lang = 'ru'
+            else:
+                lang = user_data['lang']
             if users[user_id] == time and user_id not in blkl.dab:
                 poll(user_id, lang)
                 blkl.add(user_id)
@@ -713,13 +713,13 @@ def forced_polls():
         users = json.load(file)
         users = {int(user_id):value for user_id, value in users.items()}
     for user_id in users:
-        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
-            data = json.load(file)
-        if 'lang' in data.keys():
-            lang = data['lang']
-        else:
-            lang = 'ru'
         if users[user_id] is not None and user_id not in blkl.dab:
+            with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
+                data = json.load(file)
+            if 'lang' in data.keys():
+                lang = data['lang']
+            else:
+                lang = 'ru'
             if timestamp() not in data['responses'].keys():
                 if is_late(users[user_id]):
                     poll(user_id, lang)
