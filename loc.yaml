@@ -172,6 +172,7 @@ ru:
     achievements: Достижения
     language: Выбрать язык
     delete: УДАЛИТЬ ДАННЫЕ
+    nodata: Данные удалены. Для использования бота используй /start заново
 en:
   description:
     - |
@@ -262,6 +263,7 @@ en:
     yes: "Yes"
     no: "No"
     ok: OK
+    nodata: No data for you is stored. Redo registration with /start
   achievements:
     streak_3:
       name: First Steps.

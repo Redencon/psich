@@ -127,8 +127,11 @@ def dab_upd(filename, user_id, argument = None, **kwargs):
     return
 
 def new_response(user_id, key, answer):
-    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
-        user_db = json.load(file)
+    try:
+        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
+            user_db = json.load(file)
+    except:
+        return False
     if key in user_db['responses'].keys():
         return False
     user_db['responses'][key] = answer
@@ -161,8 +164,11 @@ def send_poll(time):
         blkl.add(timestamp())
     for user_id in users:
         if users[user_id] is not None:
-            with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
-                user_data = json.load(f)
+            try:
+                with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
+                    user_data = json.load(f)
+            except:
+                dab_upd(STATUS_FILE, user_id, None)
             if 'lang' not in user_data:
                 lang = 'ru'
             else:
@@ -190,8 +196,11 @@ def wanna_get(message: types.Message):
 
 def get_lang(user: types.User):
     '''Get the language code for chosen User instance'''
-    with open(RESPONSES_FOLDER+'/'+str(user.id)+'.json', 'r') as file:
-        user_db = json.load(file)
+    try:
+        with open(RESPONSES_FOLDER+'/'+str(user.id)+'.json', 'r') as file:
+            user_db = json.load(file)
+    except:
+        return user.language_code
     if 'lang' not in user_db.keys():
         if user.language_code in ('ru', 'en'):
             user_db['lang'] = user.language_code
@@ -262,8 +271,15 @@ def start_response(call: types.CallbackQuery):
     lang = get_lang(call.from_user)
     bot.answer_callback_query(call.id, service[lang]['thanks'])
     bot.edit_message_text(service[lang]['thanks'], call.message.chat.id, call.message.id)
-    with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json') as file:
-        user_db = json.load(file)
+    try:
+        with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json') as file:
+            user_db = json.load(file)
+    except:
+        bot.answer_callback_query(
+            call.id,
+            'No user data found, redo register',
+            True
+        )
     if call.data[-1] == 'n':
         if 'lgbt' in user_db['demog'].keys():
             dab_upd(STATUS_FILE, call.from_user.id, None)
