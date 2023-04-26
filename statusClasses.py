@@ -25,6 +25,11 @@ class Blacklist:
         self.dab = []
         self.dump()
 
+class Day:
+    def __init__(self, answers = []) -> None:
+        if type(answers) == int:
+            self.answers = []
+
 class GeneralData:
     def __init__(self, filename, bot: telebot.TeleBot, ADMIN: int):
         self.bot = bot
