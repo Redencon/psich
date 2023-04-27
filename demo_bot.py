@@ -151,7 +151,10 @@ def poll(user_id, lang='ru'):
     hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']
     text = timestamp()+'\n'+service[lang]['poll']
     markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton(hearts[i], callback_data='DS_'+str(i)) for i in range(7)]])
-    bot.send_message(user_id, text, reply_markup=markup)
+    try:
+        bot.send_message(user_id, text, reply_markup=markup)
+    except:
+        dab_upd(STATUS_FILE, user_id, None)
 
 def send_poll(time):
     with open(STATUS_FILE) as file:
@@ -730,8 +733,12 @@ def forced_polls():
         users = {int(user_id):value for user_id, value in users.items()}
     for user_id in users:
         if users[user_id] is not None and user_id not in blkl.dab:
-            with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
-                data = json.load(file)
+            try:
+                with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
+                    data = json.load(file)
+            except:
+                dab_upd(STATUS_FILE, user_id, None)
+                continue
             if 'lang' in data.keys():
                 lang = data['lang']
             else:
