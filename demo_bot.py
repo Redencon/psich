@@ -117,11 +117,7 @@ def dab_upd(filename, user_id, argument = None, **kwargs):
         dab = {int(key): val for key, val in json.load(file).items()}
     if user_id not in dab.keys() and kwargs:
         dab[user_id] = {}
-    if argument is not None:
-        dab[user_id] = argument
-    else:
-        for key in kwargs:
-            dab[user_id][key] = kwargs[key]
+    dab[user_id] = argument
     with open(filename, 'w') as file:
         json.dump(dab, file)
     return
@@ -181,7 +177,10 @@ def send_poll(time):
                 blkl.add(user_id)
             if last_today and users[user_id] != time:
                 if timestamp() not in user_data['responses'].keys():
-                    bot.send_message(user_id, service[lang]['reminder'])
+                    try:
+                        bot.send_message(user_id, service[lang]['reminder'])
+                    except:
+                        dab_upd(STATUS_FILE, user_id, None)
     return
 
 def wanna_get(message: types.Message):
