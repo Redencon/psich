@@ -80,6 +80,7 @@ ru:
     stats: Твой текущий успех за месяц 
     stats_next: Другой месяц...
     new_operator: Добро пожаловать в чат операторов Настеньки! Здесь можно отвечать на сообщения, которые пользователи пишут боту. Для этого надо использовать reply на сообщение, на которое хочется ответить. Наверху каждого сообщения есть уникальный псевдоним пользователя, по которому его можно опознать. Удачи!
+    registration_closed: К сожалению, я не могу верифицировать новых пользователей сейчас. Вернитесь позже.
     delete: |
       Вы уверены, что хотите удалить все свои данные?
       ДЕЙСТВИЕ НЕОБРАТИМО
@@ -256,6 +257,7 @@ en:
     stats: Your record for this month 
     stats_next: Another month...
     new_operator: Welcome to Nastyenka operators chat! Here we answer to messages users send directly to bot. To answer a message, reply to a desired message from user. Every user has a unique and persistent persona, written at the beginning. Good luck!
+    registration_closed: I am unable to verify new users now. Please, come back later.
     delete: |
       Are you sure you want to delete all your data?
       THIS ACTION IS IRREVERSIBLE

@@ -507,7 +507,11 @@ def email(message: types.Message):
                 return
         return
     else:
-        code = send_code(response, DOMEN)
+        try:
+            code = send_code(response, DOMEN)
+        except:
+            bot.send_message(ADMIN, 'Токен GMail сгорел. Обнови. Его хотели использовать')
+            bot.send_message(message.chat.id, service[lang]['registration_closed'])
         if code is None:
             bot.send_message(message.chat.id, service[lang]['email_wrong_adress'])
             return
