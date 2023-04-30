@@ -117,18 +117,17 @@ def dab_upd(filename, user_id, argument = None, **kwargs):
         dab = {int(key): val for key, val in json.load(file).items()}
     if user_id not in dab.keys() and kwargs:
         dab[user_id] = {}
-    if argument is not None:
-        dab[user_id] = argument
-    else:
-        for key in kwargs:
-            dab[user_id][key] = kwargs[key]
+    dab[user_id] = argument
     with open(filename, 'w') as file:
         json.dump(dab, file)
     return
 
 def new_response(user_id, key, answer):
-    with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
-        user_db = json.load(file)
+    try:
+        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
+            user_db = json.load(file)
+    except:
+        return False
     if key in user_db['responses'].keys():
         return False
     user_db['responses'][key] = answer
@@ -148,7 +147,10 @@ def poll(user_id, lang='ru'):
     hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']
     text = timestamp()+'\n'+service[lang]['poll']
     markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton(hearts[i], callback_data='DS_'+str(i)) for i in range(7)]])
-    bot.send_message(user_id, text, reply_markup=markup)
+    try:
+        bot.send_message(user_id, text, reply_markup=markup)
+    except:
+        dab_upd(STATUS_FILE, user_id, None)
 
 def send_poll(time):
     with open(STATUS_FILE) as file:
@@ -160,19 +162,25 @@ def send_poll(time):
         blkl.clear()
         blkl.add(timestamp())
     for user_id in users:
-        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
-            user_data = json.load(f)
-        if 'lang' not in user_data:
-            lang = 'ru'
-        else:
-            lang = user_data['lang']
         if users[user_id] is not None:
+            try:
+                with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
+                    user_data = json.load(f)
+            except:
+                dab_upd(STATUS_FILE, user_id, None)
+            if 'lang' not in user_data:
+                lang = 'ru'
+            else:
+                lang = user_data['lang']
             if users[user_id] == time and user_id not in blkl.dab:
                 poll(user_id, lang)
                 blkl.add(user_id)
             if last_today and users[user_id] != time:
                 if timestamp() not in user_data['responses'].keys():
-                    bot.send_message(user_id, service[lang]['reminder'])
+                    try:
+                        bot.send_message(user_id, service[lang]['reminder'])
+                    except:
+                        dab_upd(STATUS_FILE, user_id, None)
     return
 
 def wanna_get(message: types.Message):
@@ -190,8 +198,11 @@ def wanna_get(message: types.Message):
 
 def get_lang(user: types.User):
     '''Get the language code for chosen User instance'''
-    with open(RESPONSES_FOLDER+'/'+str(user.id)+'.json', 'r') as file:
-        user_db = json.load(file)
+    try:
+        with open(RESPONSES_FOLDER+'/'+str(user.id)+'.json', 'r') as file:
+            user_db = json.load(file)
+    except:
+        return user.language_code
     if 'lang' not in user_db.keys():
         if user.language_code in ('ru', 'en'):
             user_db['lang'] = user.language_code
@@ -284,8 +295,15 @@ def start_response(call: types.CallbackQuery):
     lang = get_lang(call.from_user)
     bot.answer_callback_query(call.id, service[lang]['thanks'])
     bot.edit_message_text(service[lang]['thanks'], call.message.chat.id, call.message.id)
-    with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json') as file:
-        user_db = json.load(file)
+    try:
+        with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json') as file:
+            user_db = json.load(file)
+    except:
+        bot.answer_callback_query(
+            call.id,
+            'No user data found, redo register',
+            True
+        )
     if call.data[-1] == 'n':
         if 'lgbt' in user_db['demog'].keys():
             dab_upd(STATUS_FILE, call.from_user.id, None)
@@ -509,7 +527,11 @@ def email(message: types.Message):
                 return
         return
     else:
-        code = send_code(response, DOMEN)
+        try:
+            code = send_code(response, DOMEN)
+        except:
+            bot.send_message(ADMIN, 'Токен GMail сгорел. Обнови. Его хотели использовать')
+            bot.send_message(message.chat.id, service[lang]['registration_closed'])
         if code is None:
             bot.send_message(message.chat.id, service[lang]['email_wrong_adress'])
             return
@@ -761,13 +783,17 @@ def forced_polls():
         users = json.load(file)
         users = {int(user_id):value for user_id, value in users.items()}
     for user_id in users:
-        with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
-            data = json.load(file)
-        if 'lang' in data.keys():
-            lang = data['lang']
-        else:
-            lang = 'ru'
         if users[user_id] is not None and user_id not in blkl.dab:
+            try:
+                with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
+                    data = json.load(file)
+            except:
+                dab_upd(STATUS_FILE, user_id, None)
+                continue
+            if 'lang' in data.keys():
+                lang = data['lang']
+            else:
+                lang = 'ru'
             if timestamp() not in data['responses'].keys():
                 if is_late(users[user_id]):
                     poll(user_id, lang)
