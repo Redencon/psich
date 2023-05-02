@@ -219,7 +219,7 @@ def registered_only(func):
             lang = get_lang(message.from_user)
             with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json') as file:
                 user_db = json.load(file)
-            if 'lgbt' in user_db['demog'] and user_db['code'] is not None:
+            if 'lgbt' in user_db['demog']:
                 return func(message)
             else:
                 bot.send_message(
