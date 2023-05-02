@@ -213,6 +213,28 @@ def get_lang(user: types.User):
     return user_db['lang']
 
 
+def registered_only(func):
+    def new_func(message: types.Message):
+        try:
+            lang = get_lang(message.from_user)
+            with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json') as file:
+                user_db = json.load(file)
+            if 'lgbt' in user_db['demog'] and user_db['code'] is not None:
+                return func(message)
+            else:
+                bot.send_message(
+                    message.chat.id,
+                    service[lang]['must_register']
+                )
+        except:
+            bot.send_message(
+                    message.chat.id,
+                    service[lang]['must_register']
+                )
+    return new_func
+
+
+
 @bot.message_handler(commands=['setchat'], func=lambda message: message.from_user.id == ADMIN)
 def setchat(message: types.Message):
     CHAT = message.chat.id
@@ -336,6 +358,7 @@ def parse_survey(call: types.CallbackQuery):
     return
 
 @bot.message_handler(commands=['unsub', 'sub'])
+@registered_only
 def unsub(message):
     wanna_get(message)
     return
@@ -409,6 +432,7 @@ def calendar(user_id, month, year):
 
 
 @bot.message_handler(commands=['stats'])
+@registered_only
 def stats(message: types.Message):
     lang = get_lang(message.from_user)
     curyear = time.localtime()[0]
@@ -467,6 +491,7 @@ def delete(message):
     return
 
 @bot.message_handler(commands=['today'])
+@registered_only
 def today(message):
     lang = get_lang(message.from_user)
     if add_achievement(message.from_user.id, 'today', RESPONSES_FOLDER+'/'):
@@ -526,6 +551,7 @@ def email(message: types.Message):
         return
 
 @bot.message_handler(commands=['time'])
+@registered_only
 def time_present(message: types.Message, lang = None):
     if lang is None:
         lang = get_lang(message.from_user)
@@ -564,6 +590,7 @@ def time_choose(call: types.CallbackQuery):
     return
 
 @bot.message_handler(commands=['achievements'])
+@registered_only
 def achievements(message: types.Message):
     lang = get_lang(message.from_user)
     with open(RESPONSES_FOLDER+'/'+str(message.from_user.id)+'.json', 'r', encoding='utf-8') as f:
@@ -672,6 +699,7 @@ def safe_send_message(chat_id, message):
         return safe_send_message(chat_id, message)
 
 @bot.message_handler(content_types=['text'], func= lambda message: message.from_user.id == message.chat.id and message.text[0] != '/')
+@registered_only
 def anon_message(message: types.Message):
     text = message.text
     hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']

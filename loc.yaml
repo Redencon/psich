@@ -65,6 +65,7 @@ ru:
       На указанную почту было отправлено письмо с кодом подтверждения.
       Отправь мне полученный код.
     help_fail: Такой команды нет.
+    must_register: Для использования бота надо зарегистрироваться. Используй /start
     thanks: Спасибо.
     demog_init: |
       Перед началом использования бота, ответьте на несколько коротких вопросов.
@@ -242,6 +243,7 @@ en:
       I've sent a verification email to your adress with a code.
       Send me the code you've got.
     help_fail: There's no such command.
+    must_register: To use the bot you must register. Use /start to start registration
     thanks: Thanks.
     demog_init: |
       Before you can start using this bot, answer a few questions about yourself.
