@@ -54,7 +54,9 @@ with open(LOC_FILE, 'r', encoding='utf-8') as file:
     responses = {key: all_text[key]['responses'] for key in all_text}
     achievements_d = {key: all_text[key]['achievements'] for key in all_text}
     help_d = {key: all_text[key]['help'] for key in all_text}
-    description = {key: all_text[key]['description'][(0 if TOKEN[0]=='5' else 1)] for key in all_text}
+    description = {key: all_text[key]['description'][
+        (0 if TOKEN[0] == '5' else 1)
+        ] for key in all_text}
     short_description = {key: all_text[key]['short_description'] for key in all_text}
     del all_text
 
@@ -78,10 +80,12 @@ colorcoding = [
     '⬜'
 ]
 
+
 def get_help():
     with open('help.json', encoding='utf-8') as file:
         help_db = json.load(file)
     return help_db
+
 
 def days_in_month(month, year):
     if month == 2:
@@ -92,6 +96,7 @@ def days_in_month(month, year):
         return 31
     return 30
 
+
 def convivnient_slicer(li):
     ret = [[]]
     for elem in li:
@@ -99,6 +104,7 @@ def convivnient_slicer(li):
             ret.append([])
         ret[-1].append(elem)
     return ret
+
 
 def is_late(ref: str) -> bool:
     now = time.localtime()
@@ -111,7 +117,8 @@ def is_late(ref: str) -> bool:
             return False
     return True
 
-def dab_upd(filename, user_id, argument = None, **kwargs):
+
+def dab_upd(filename, user_id, argument=None, **kwargs):
     '''Open the specified dab file and change it'''
     with open(filename) as file:
         dab = {int(key): val for key, val in json.load(file).items()}
@@ -122,11 +129,12 @@ def dab_upd(filename, user_id, argument = None, **kwargs):
         json.dump(dab, file)
     return
 
+
 def new_response(user_id, key, answer):
     try:
         with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
             user_db = json.load(file)
-    except:
+    except FileNotFoundError:
         return False
     if key in user_db['responses'].keys():
         return False
@@ -134,6 +142,7 @@ def new_response(user_id, key, answer):
     with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'w') as file:
         json.dump(user_db, file)
     return True
+
 
 def dem_response(user_id, key, answer):
     with open(RESPONSES_FOLDER + '/'+str(user_id)+'.json') as file:
@@ -143,19 +152,23 @@ def dem_response(user_id, key, answer):
         json.dump(user_db, file)
     return
 
+
 def poll(user_id, lang='ru'):
-    hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']
+    hearts = ['❤️', '🧡', '💛', '💚', '💙', '💜', '❤️‍🩹']
     text = timestamp()+'\n'+service[lang]['poll']
-    markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton(hearts[i], callback_data='DS_'+str(i)) for i in range(7)]])
+    markup = types.InlineKeyboardMarkup([
+        [types.InlineKeyboardButton(hearts[i], callback_data='DS_'+str(i))
+         for i in range(7)]])
     try:
         bot.send_message(user_id, text, reply_markup=markup)
     except:
         dab_upd(STATUS_FILE, user_id, None)
 
+
 def send_poll(time):
     with open(STATUS_FILE) as file:
         users = json.load(file)
-        users = {int(user_id):value for user_id, value in users.items()}
+        users = {int(user_id): value for user_id, value in users.items()}
     last_today = time == TIMES[-1]
     if time == TIMES[0]:
         gens.new_day(timestamp())
@@ -166,7 +179,7 @@ def send_poll(time):
             try:
                 with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json', 'r', encoding='utf-8') as f:
                     user_data = json.load(f)
-            except:
+            except FileNotFoundError:
                 dab_upd(STATUS_FILE, user_id, None)
             if 'lang' not in user_data:
                 lang = 'ru'
@@ -182,6 +195,7 @@ def send_poll(time):
                     except:
                         dab_upd(STATUS_FILE, user_id, None)
     return
+
 
 def wanna_get(message: types.Message):
     lang = get_lang(message.from_user)
@@ -201,7 +215,7 @@ def get_lang(user: types.User):
     try:
         with open(RESPONSES_FOLDER+'/'+str(user.id)+'.json', 'r') as file:
             user_db = json.load(file)
-    except:
+    except FileNotFoundError:
         return user.language_code
     if 'lang' not in user_db.keys():
         if user.language_code in ('ru', 'en'):
@@ -234,7 +248,6 @@ def registered_only(func):
     return new_func
 
 
-
 @bot.message_handler(commands=['setchat'], func=lambda message: message.from_user.id == ADMIN)
 def setchat(message: types.Message):
     CHAT = message.chat.id
@@ -243,6 +256,7 @@ def setchat(message: types.Message):
         json.dump(secret, f, ensure_ascii=False, indent=4)
     bot.send_message(CHAT, 'Использую этот чат как чат операторов.')
     return
+
 
 @bot.message_handler(commands=['update'], func=lambda message: message.from_user.id == ADMIN)
 def update(_: types.Message):
@@ -274,6 +288,7 @@ def start(message: types.Message):
         bot.reply_to(message, help_d[lang]['help'])
     return
 
+
 @bot.message_handler(['help'])
 def help(message: types.Message):
     lang = get_lang(message.from_user)
@@ -288,7 +303,7 @@ def help(message: types.Message):
         return
     bot.reply_to(message, help_d[lang][cmd])
     return
-    
+
 
 @bot.callback_query_handler(lambda call: call.data[:3] == 'ST_')
 def start_response(call: types.CallbackQuery):
@@ -298,7 +313,7 @@ def start_response(call: types.CallbackQuery):
     try:
         with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json') as file:
             user_db = json.load(file)
-    except:
+    except FileNotFoundError:
         bot.answer_callback_query(
             call.id,
             'No user data found, redo register',
@@ -321,14 +336,17 @@ def start_response(call: types.CallbackQuery):
         service[lang]['demog_init']+'\n'+questions[lang][0][1],
         call.message.chat.id,
         call.message.id,
-        reply_markup=types.InlineKeyboardMarkup([[types.InlineKeyboardButton(text, callback_data='DG_0'+str(i)) for i, text in enumerate(options)]])
+        reply_markup=types.InlineKeyboardMarkup([[
+            types.InlineKeyboardButton(text, callback_data='DG_0'+str(i))
+            for i, text in enumerate(options)]])
     )
     return
+
 
 @bot.callback_query_handler(lambda call: call.data[:3] == 'DS_')
 def parse_survey(call: types.CallbackQuery):
     lang = get_lang(call.from_user)
-    hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']
+    hearts = ['❤️', '🧡', '💛', '💚', '💙', '💜', '❤️‍🩹']
     answer = int(call.data[-1])
     text = call.message.text.split('\n')
     if text[0] != timestamp():
@@ -338,7 +356,10 @@ def parse_survey(call: types.CallbackQuery):
     bot.answer_callback_query(call.id, service[lang]['poll_answer'].format(answer=hearts[answer]))
     if new_response(call.from_user.id, text[0], answer):
         gens.add_response(text[0], answer)
-    bot.edit_message_text('\n'.join(text) + '\n'+service[lang]['poll_answer'].format(answer=hearts[answer]), call.message.chat.id, call.message.id, reply_markup=None)
+    bot.edit_message_text(
+        '\n'.join(text)
+        + '\n'+service[lang]['poll_answer'].format(answer=hearts[answer]),
+        call.message.chat.id, call.message.id, reply_markup=None)
     bot.send_message(
         call.message.chat.id,
         random.choice(responses[lang][answer])
@@ -357,11 +378,13 @@ def parse_survey(call: types.CallbackQuery):
     # TODO: add experience system, see #11
     return
 
+
 @bot.message_handler(commands=['unsub', 'sub'])
 @registered_only
 def unsub(message):
     wanna_get(message)
     return
+
 
 @bot.callback_query_handler(lambda call: call.data[:3] == 'US_')
 def unsub_check(call: types.CallbackQuery):
@@ -375,6 +398,7 @@ def unsub_check(call: types.CallbackQuery):
         bot.answer_callback_query(call.id, service[lang]['unsub_yes'])
         bot.edit_message_text(service[lang]['unsub_yes'], call.message.chat.id, call.message.id)
     return
+
 
 @bot.callback_query_handler(lambda call: call.data[:3] == 'DG_')
 def demogr(call: types.CallbackQuery):
@@ -413,12 +437,13 @@ def demogr(call: types.CallbackQuery):
         )
         return
 
+
 def calendar(user_id, month, year):
     with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
         data = json.load(file)
     stamp = time.mktime((year, month, 1, 0, 0, 0, 0, 0, -1))
     time_struct = time.localtime(stamp)
-    grey = (time_struct.tm_wday - 1 + 1) % 7 
+    grey = (time_struct.tm_wday - 1 + 1) % 7
     month = [str(year)+'/'+str(month)+'/'+str(i) for i in range(1, days_in_month(month, year)+1)]
     stat = [data['responses'][i] if i in data['responses'].keys() else 7 for i in month]
     text = [['⚫'] * grey]
@@ -448,13 +473,17 @@ def stats(message: types.Message):
         bot.send_message(message.chat.id, achievement_message('stats', lang))
     bot.send_message(
         message.chat.id,
-        service[lang]['stats']+' '+ str(curmonth) + '/' + str(curyear) +':\n'+calendar(user, curmonth, curyear),
+        '{0} {1}/{2}:\n{3}'.format(
+            service[lang]['stats'], str(curmonth), str(curyear),
+            calendar(user, curmonth, curyear)
+        ),
         reply_markup=types.InlineKeyboardMarkup([[
             types.InlineKeyboardButton('◀️', callback_data='SS_-'),
             types.InlineKeyboardButton('▶️', callback_data='SS_+')
         ]])
     )
     return
+
 
 @bot.callback_query_handler(lambda call: call.data[:3] == 'SS_')
 def switch_calendar(call: types.CallbackQuery):
@@ -472,13 +501,16 @@ def switch_calendar(call: types.CallbackQuery):
             year -= 1
             month = 12
     bot.edit_message_text(
-        service[lang]['stats']+' '+ str(month) + '/' + str(year) +':\n'+calendar(call.from_user.id, month, year),
+        '{stats} {month}/{year}:\n{calendar}'.format(
+            stats=service[lang]['stats'],
+            month=month, year=year,
+            calendar=calendar(call.from_user.id, month, year)
+        ),
         call.message.chat.id,
         call.message.id,
         reply_markup=call.message.reply_markup
     )
     bot.answer_callback_query(call.id, service[lang]['stats_next'])
-
 
 
 @bot.message_handler(commands=['delete'])
@@ -490,6 +522,7 @@ def delete(message):
     ]]))
     return
 
+
 @bot.message_handler(commands=['today'])
 @registered_only
 def today(message):
@@ -498,6 +531,7 @@ def today(message):
         bot.send_message(message.chat.id, achievement_message('today', lang))
     gens.today(message.from_user.id)
     return
+
 
 @bot.callback_query_handler(lambda call: call.data[:3] == 'CL_')
 def wipe(call: types.CallbackQuery):
@@ -512,6 +546,7 @@ def wipe(call: types.CallbackQuery):
     chat_users.delete_user(call.from_user.id)
     bot.delete_message(call.message.chat.id, call.message.id)
     return
+
 
 @bot.message_handler(func=lambda message: pend.check_pending(message.from_user.id) and message.text[0] != '/')
 def email(message: types.Message):
@@ -550,9 +585,10 @@ def email(message: types.Message):
         bot.send_message(message.chat.id, service[lang]['email_sent'])
         return
 
+
 @bot.message_handler(commands=['time'])
 @registered_only
-def time_present(message: types.Message, lang = None):
+def time_present(message: types.Message, lang=None):
     if lang is None:
         lang = get_lang(message.from_user)
     markup = [[]]
@@ -568,6 +604,7 @@ def time_present(message: types.Message, lang = None):
         reply_markup=markup
     )
     return
+
 
 @bot.callback_query_handler(lambda call: call.data[:3] == 'TM_')
 def time_choose(call: types.CallbackQuery):
@@ -589,6 +626,7 @@ def time_choose(call: types.CallbackQuery):
     )
     return
 
+
 @bot.message_handler(commands=['achievements'])
 @registered_only
 def achievements(message: types.Message):
@@ -601,14 +639,20 @@ def achievements(message: types.Message):
             json.dump(data, f)
     bot.send_message(
         message.chat.id,
-        service[lang]['achievements']+':\n'+'\n\n'.join([
-            '✨'+achievements_d[lang][name]['name']
-            +':\n'
-            +achievements_d[lang][name]['description'] for name in data['achievements']
-        ])
+        '{init}:\n{achievements}'.format(
+            init=service[lang]['achievements'],
+            achievements='\n\n'.join([
+                '✨{name}:\n{description}'.format(
+                    name=achievements_d[lang][name]['name'],
+                    description=achievements_d[lang][name]['description'])
+                for name in data['achievements']])
+        )
     )
 
-@bot.message_handler(commands = ['thanks'], func=lambda message: message.chat.id==CHAT and message.reply_to_message is not None)
+
+@bot.message_handler(
+        commands=['thanks'],
+        func=lambda message: message.chat.id == CHAT and message.reply_to_message is not None)
 def thanks(message: types.Message):
     pseudonym = message.reply_to_message.text.split('\n')[0][2:]
     if add_achievement(
@@ -619,7 +663,7 @@ def thanks(message: types.Message):
         bot.send_message(chat_users.get_user_by_pseudonym(pseudonym).id, achievement_message('good_conversation'))
 
 
-@bot.message_handler(commands = ['grant'], func = lambda message: message.chat.id == ADMIN)
+@bot.message_handler(commands=['grant'], func=lambda message: message.chat.id == ADMIN)
 def grant(message: types.Message):
     text = message.text.split()[1:]
     with open('achievements.json', 'r', encoding='utf-8') as f:
@@ -636,7 +680,7 @@ def grant(message: types.Message):
         bot.send_message(ADMIN, 'Добавила достижение.')
 
 
-@bot.message_handler(['checkuser'], func = lambda message: message.from_user.id == ADMIN)
+@bot.message_handler(['checkuser'], func=lambda message: message.from_user.id == ADMIN)
 def checkuser(message):
     entities = message.entities
     buffer = ''
@@ -647,11 +691,12 @@ def checkuser(message):
     bot.reply_to(message, buffer)
 
 
-@bot.message_handler(['run'], func = lambda message: message.from_user.id == ADMIN)
+@bot.message_handler(['run'], func=lambda message: message.from_user.id == ADMIN)
 def run(message):
     forced_polls()
     bot.reply_to(message, 'Отправила опросы.')
     return
+
 
 @bot.message_handler(['language'])
 def language(message: types.Message):
@@ -664,7 +709,8 @@ def language(message: types.Message):
         ]])
     )
 
-@bot.callback_query_handler(func = lambda call: call.data[:3] == 'LG_')
+
+@bot.callback_query_handler(func=lambda call: call.data[:3] == 'LG_')
 def language_choice(call: types.CallbackQuery):
     with open(RESPONSES_FOLDER+'/'+str(call.from_user.id)+'.json', 'r') as file:
         user_data = json.load(file)
@@ -677,7 +723,6 @@ def language_choice(call: types.CallbackQuery):
         call.message.chat.id,
         call.message.id
     )
-    
 
 
 @bot.message_handler(['report'], func=lambda m: m.chat.id == ADMIN)
@@ -690,7 +735,6 @@ def send_report(_):
     return
 
 
-
 def safe_send_message(chat_id, message):
     try:
         return bot.send_message(chat_id, message)
@@ -698,11 +742,14 @@ def safe_send_message(chat_id, message):
         time.sleep(3)
         return safe_send_message(chat_id, message)
 
-@bot.message_handler(content_types=['text'], func= lambda message: message.from_user.id == message.chat.id and message.text[0] != '/')
+
+@bot.message_handler(
+        content_types=['text'],
+        func=lambda message: message.from_user.id == message.chat.id and message.text[0] != '/')
 @registered_only
 def anon_message(message: types.Message):
     text = message.text
-    hearts = ['❤️','🧡','💛','💚','💙','💜','❤️‍🩹']
+    hearts = ['❤️', '🧡', '💛', '💚', '💙', '💜', '❤️‍🩹']
     user = chat_users.get_user_by_id(message.from_user.id)
     if user is None:
         user = chat_users.new_user(message.from_user.id, message.from_user.first_name)
@@ -723,19 +770,21 @@ def anon_message(message: types.Message):
     return
 
 
-@bot.message_handler(content_types=['text'], func=lambda message: message.chat.id == CHAT and message.reply_to_message is not None)
+@bot.message_handler(
+        content_types=['text'],
+        func=lambda message: message.chat.id == CHAT and message.reply_to_message is not None)
 def reply_to_anon_message(message: types.Message):
     if message.reply_to_message.from_user.id != bot.get_me().id:
         return
     reply = message.reply_to_message.text
-    if reply[0] not in ('❤️','🧡','💛','💚','💙','💜','❤️‍🩹', '❓'):
+    if reply[0] not in ('❤️', '🧡', '💛', '💚', '💙', '💜', '❤️‍🩹', '❓'):
         return
     pseudonym = reply.split('\n')[0][2:]
     user = chat_users.get_user_by_pseudonym(pseudonym)
     if user is None:
         bot.send_message(CHAT, 'Этого пользователя уже не существует.')
         return
-    text = message.text.format(name = user.name)
+    text = message.text.format(name=user.name)
     safe_send_message(user.id, text)
     return
 
@@ -761,13 +810,13 @@ def banned(update: types.ChatMemberUpdated):
 def forced_polls():
     with open(STATUS_FILE) as file:
         users = json.load(file)
-        users = {int(user_id):value for user_id, value in users.items()}
+        users = {int(user_id): value for user_id, value in users.items()}
     for user_id in users:
         if users[user_id] is not None and user_id not in blkl.dab:
             try:
                 with open(RESPONSES_FOLDER+'/'+str(user_id)+'.json') as file:
                     data = json.load(file)
-            except:
+            except FileNotFoundError:
                 dab_upd(STATUS_FILE, user_id, None)
                 continue
             if 'lang' in data.keys():
@@ -781,7 +830,6 @@ def forced_polls():
     return
 
 
-
 def set_commands(scope=types.BotCommandScopeDefault):
     for lang in ('ru', 'en'):
         bot.delete_my_commands(scope=scope, language_code=lang)
@@ -793,11 +841,10 @@ def set_commands(scope=types.BotCommandScopeDefault):
     return
 
 
-
 if __name__ == '__main__':
     with open(STATUS_FILE) as file:
         users = json.load(file)
-        users = {int(user_id):value for user_id, value in users.items()}
+        users = {int(user_id): value for user_id, value in users.items()}
     for user in users:
         try:
             set_commands(types.BotCommandScopeChat(user))
