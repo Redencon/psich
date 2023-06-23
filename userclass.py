@@ -1,5 +1,6 @@
 import json
 
+
 class User:
     def __init__(self, number, name, last_message):
         self.number = number
@@ -7,7 +8,12 @@ class User:
         self.last_message = last_message
 
     def to_dict(self):
-        return {"number": self.number, "name": self.name, "last_message": self.last_message}
+        return {
+            "number": self.number,
+            "name": self.name,
+            "last_message": self.last_message,
+        }
+
 
 class UserStorage:
     def __init__(self, filename):
@@ -36,4 +42,3 @@ class UserStorage:
         except FileNotFoundError:
             self.users = []
             self.save()
-
