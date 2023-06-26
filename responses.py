@@ -15,8 +15,12 @@ the score, the type of score
   - other?
 """
 
-from gpt_users import User as GptUser
-from typing import Optional
+import os
+import time
+import json
+from typing import Optional, Self
+from gpt_users import User as GptUser, UserManager as GptUserManager
+import achievements as acv
 
 
 class User:
@@ -47,14 +51,73 @@ class User:
         self,
         user_id: int,
         username: str,
+        first_name: Optional[str],
         days: list,
         achievements: list,
-        gptuser: GptUser,
+        gptmanager: GptUserManager,
         meta: dict,
     ) -> None:
-        self.days = days
+        self.days: list[User.Day] = days
         self.user_id = user_id
         self.username = username
-        self.achievements = achievements
-        self.gptuser = gptuser
+        self.first_name = first_name
+        self.achievements = [User.Achievement(*a) for a in achievements]
+        self.gptuser = self.set_gpt_user(gptmanager)
         self.meta = meta
+
+    def set_gpt_user(self, manager: GptUserManager):
+        """Add GptUser object to this Object instance
+
+        Args:
+            manager (GptUserManager): User Manager used by this bot
+
+        Raises:
+            AssertionError: no new user can be added after reaching the limit
+        """
+        user = manager.get_user_by_id(self.user_id)
+        if user is None:
+            user = manager.new_user(
+                self.user_id,
+                (self.first_name if self.first_name is not None else self.username),
+            )
+        assert (
+            user is not None
+        ), "Max user amount reached, can't add new user: {}!".format(self.username)
+        self.gptuser = user
+
+    def response(self, type: str, score: int):
+        if not self.days or self.days[-1].date != time.strftime("%Y-%m-%d"):
+            self.days.append(User.Day(time.strftime("%Y-%m-%d"), []))
+        self.days[-1].responses.append(tuple(time.strftime("%H:%M"), type, score))
+        # TODO: add achievements parsing
+
+    @property
+    def calendar(self):
+        ret = {}
+        for day in self.days:
+            valid = [response[2] for response in day.responses if response[1] == "mood"]
+            ret[day.date] = round(sum(valid) / len(valid))
+        return ret
+
+    def parse_old_data(cls, data: dict, user_id) -> Self:
+        demog = data["demog"]
+        code = data["code"]
+        lang = data["lang"]
+        responses: dict[str, int] = data["responses"]
+        achievements = data["achievements"]
+        return User(
+            user_id=None,
+            days=[
+                User.Day(key, [("12:10", "mood", value)])
+                for key, value in responses.items()
+            ],
+        )
+
+    @classmethod
+    def load(cls, user_id: int, folder: str):
+        with open(
+            os.path.join(folder, "{}.json".format(str(user_id))), encoding="utf-8"
+        ) as f:
+            data = json.load(f)
+        if "meta" not in data:
+            cls.parse_old_data(data)
