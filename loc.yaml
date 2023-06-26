@@ -65,6 +65,7 @@ ru:
       На указанную почту было отправлено письмо с кодом подтверждения.
       Отправь мне полученный код.
     help_fail: Такой команды нет.
+    must_register: Для использования бота надо зарегистрироваться. Используй /start
     thanks: Спасибо.
     demog_init: |
       Перед началом использования бота, ответьте на несколько коротких вопросов.
@@ -77,6 +78,7 @@ ru:
     unsub_no: Ну и замечательно.
     unsub_yes: Да будет так.
     achievements: 🏆Твои достижения🏅
+    new_achievement: 🎉НОВОЕ ДОСТИЖЕНИЕ:🎉 
     stats: Твой текущий успех за месяц 
     stats_next: Другой месяц...
     new_operator: Добро пожаловать в чат операторов Настеньки! Здесь можно отвечать на сообщения, которые пользователи пишут боту. Для этого надо использовать reply на сообщение, на которое хочется ответить. Наверху каждого сообщения есть уникальный псевдоним пользователя, по которому его можно опознать. Удачи!
@@ -242,6 +244,7 @@ en:
       I've sent a verification email to your adress with a code.
       Send me the code you've got.
     help_fail: There's no such command.
+    must_register: To use the bot you must register. Use /start to start registration
     thanks: Thanks.
     demog_init: |
       Before you can start using this bot, answer a few questions about yourself.

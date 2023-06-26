@@ -9,15 +9,16 @@ from google.oauth2.credentials import Credentials
 import os
 import random
 
-def send_code(adress, domen='phystech.edu'):
+
+def send_code(adress, domen="phystech.edu"):
     if domen is not None:
-        lis = adress.split('@')
+        lis = adress.split("@")
         if len(lis) != 2:
             return None
         if lis[1] != domen:
             return -1
     new_code = random.randint(100000, 999999)
-    text = f'''
+    text = f"""
 Код подтверждения для бота МКИ:
 
 {new_code}
@@ -35,14 +36,12 @@ def send_code(adress, domen='phystech.edu'):
 
 Подписывайтесь на нас в ВК и Телеграме :)
 https://vk.com/mki_mipt
-https://t.me/mki_mipt '''
-    gmail_send_message(text, adress, 'Код подтверждения для бота МКИ')
+https://t.me/mki_mipt """
+    gmail_send_message(text, adress, "Код подтверждения для бота МКИ")
     return new_code
 
 
-
-
-def gmail_send_message(text, adress, subject = 'Служебное сообщение от бота МКИ'):
+def gmail_send_message(text, adress, subject="Служебное сообщение от бота МКИ"):
     """Create and send an email message
     Print the returned  message id
     Returns: Message object, including message id
@@ -51,37 +50,35 @@ def gmail_send_message(text, adress, subject = 'Служебное сообще�
     TODO(developer) - See https://developers.google.com/identity
     for guides on implementing OAuth2 for the application.
     """
-    SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+    SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
 
     try:
-        service = build('gmail', 'v1', credentials=creds)
+        service = build("gmail", "v1", credentials=creds)
         message = EmailMessage()
 
         message.set_content(text)
 
-        message['To'] = adress
-        message['From'] = 'mkibotowner@gmail.com'
-        message['Subject'] = subject
+        message["To"] = adress
+        message["From"] = "mkibotowner@gmail.com"
+        message["Subject"] = subject
 
         # encoded message
-        encoded_message = base64.urlsafe_b64encode(message.as_bytes()) \
-            .decode()
+        encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
-        create_message = {
-            'raw': encoded_message
-        }
+        create_message = {"raw": encoded_message}
         # pylint: disable=E1101
-        send_message = (service.users().messages().send
-                        (userId="me", body=create_message).execute())
-        print(F'Message Id: {send_message["id"]}')
+        send_message = (
+            service.users().messages().send(userId="me", body=create_message).execute()
+        )
+        print(f'Message Id: {send_message["id"]}')
     except HttpError as error:
-        print(F'An error occurred: {error}')
+        print(f"An error occurred: {error}")
         send_message = None
     return send_message
 
 
-if __name__ == '__main__':
-    print(send_code('pomogaev.dd@phystech.edu'))
+if __name__ == "__main__":
+    print(send_code("pomogaev.dd@phystech.edu"))
