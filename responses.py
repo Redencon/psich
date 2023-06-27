@@ -45,12 +45,12 @@ class User:
             self.weight = weight
 
         def to_dict(self):
+            """`(name, timestamp, weight)`"""
             return list(self.name, self.timestamp, self.weight)
 
     def __init__(
         self,
         user_id: int,
-        username: str,
         first_name: Optional[str],
         days: list,
         achievements: list,
@@ -59,9 +59,9 @@ class User:
     ) -> None:
         self.days: list[User.Day] = days
         self.user_id = user_id
-        self.username = username
         self.first_name = first_name
         self.achievements = [User.Achievement(*a) for a in achievements]
+        self.manager = gptmanager
         self.gptuser = self.set_gpt_user(gptmanager)
         self.meta = meta
 
@@ -99,25 +99,48 @@ class User:
             ret[day.date] = round(sum(valid) / len(valid))
         return ret
 
-    def parse_old_data(cls, data: dict, user_id) -> Self:
+    @staticmethod
+    def parse_old_data(data: dict, user_id: int, manager: GptUserManager):
         demog = data["demog"]
         code = data["code"]
         lang = data["lang"]
         responses: dict[str, int] = data["responses"]
         achievements = data["achievements"]
         return User(
-            user_id=None,
+            user_id=user_id,
             days=[
                 User.Day(key, [("12:10", "mood", value)])
                 for key, value in responses.items()
             ],
+            achievements=[User.Achievement(a, "00:00") for a in achievements],
+            gptmanager=manager,
+            meta=dict(
+                new=True,
+                demog=demog,
+                code=code,
+                lang=lang,
+                groups=["olds"],
+            ),
         )
 
+    def dump(self, folder):
+        with open(
+            os.path.join(folder, "{}.json".format(self.user_id)), "w", encoding="utf-8"
+        ) as f:
+            json.dump(
+                dict(
+                    user_id=self.user_id,
+                    first_name=self.first_name,
+                    days=[day.to_dict() for day in self.days],
+                    achievements=[a.to_dict() for a in self.achievements],
+                )
+            )
+
     @classmethod
-    def load(cls, user_id: int, folder: str):
+    def load(cls, user_id: int, folder: str, manager: GptUserManager):
         with open(
             os.path.join(folder, "{}.json".format(str(user_id))), encoding="utf-8"
         ) as f:
             data = json.load(f)
         if "meta" not in data:
-            cls.parse_old_data(data)
+            return cls.parse_old_data(data, user_id, manager)
