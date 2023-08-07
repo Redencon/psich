@@ -8,6 +8,7 @@ the score, the type of score
 - Every user has some metadata:
   - Username
   - UserID
+  - Poll times
   - Object for communication with MNVR
   - Achievements
   - Groups
@@ -18,54 +19,83 @@ the score, the type of score
 import os
 import time
 import json
-from typing import Optional, Self
+from typing import Optional
 from gpt_users import User as GptUser, UserManager as GptUserManager
-import achievements as acv
+from dataclasses import dataclass, asdict, field
+# import achievements as acv
 
 
+@dataclass
+class Response:
+    time: str
+    type: str
+    score: int
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class Poll:
+    time: str
+    type: str
+
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class Day:
+    date: str
+    responses: list[Response]
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(date=d["date"], responses=[Response(**v) for v in d["responses"]])
+
+    def to_dict(self):
+        return dict(date=self.date, responses=[dict(r) for r in self.responses])
+
+
+@dataclass
+class Achievement:
+    name: str
+    timestamp: str
+    weight: Optional[int]
+
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
 class User:
-    class Day:
-        def __init__(self, date: str, responses: list[tuple[str, str, int]]) -> None:
-            self.date = date
-            """date in format `yyyy-mm-dd`"""
-            self.responses = responses
-            """list of responses this day
-            Each response is a tuple of time in `hh:mm`,
-            response type and response score"""
+    user_id: int
+    username: Optional[str]
+    first_name: Optional[str]
+    polls: list[Poll]
+    days: list[Day]
+    achievements: list[Achievement]
+    meta: dict
+    manager: GptUserManager
+    gptuser: GptUser = field(init=False)
 
-        def to_dict(self):
-            return list(self.date, [list(r) for r in self.responses])
-
-    class Achievement:
-        def __init__(
-            self, name: str, timestamp: str, weight: Optional[int] = None
-        ) -> None:
-            self.name = name
-            self.timestamp = timestamp
-            self.weight = weight
-
-        def to_dict(self):
-            """`(name, timestamp, weight)`"""
-            return list(self.name, self.timestamp, self.weight)
-
-    def __init__(
+    def __post_init__(
         self,
-        user_id: int,
-        first_name: Optional[str],
-        days: list,
-        achievements: list,
-        gptmanager: GptUserManager,
-        meta: dict,
     ) -> None:
-        self.days: list[User.Day] = days
-        self.user_id = user_id
-        self.first_name = first_name
-        self.achievements = [User.Achievement(*a) for a in achievements]
-        self.manager = gptmanager
-        self.gptuser = self.set_gpt_user(gptmanager)
-        self.meta = meta
+        self.set_gpt_user()
 
-    def set_gpt_user(self, manager: GptUserManager):
+    @classmethod
+    def from_dict(cls, d: dict, manager: GptUserManager):
+        return cls(
+            **{
+                key: value
+                for key, value in d.items()
+                if key not in ('manager', 'achievements', 'days', 'polls')
+            },
+            days=[Day.from_dict(day) for day in d["days"]],
+            achievements=[Achievement(**ach) for ach in d["achievements"]],
+            polls=[Poll(**poll) for poll in d['polls']]
+        )
+
+    def set_gpt_user(self):
         """Add GptUser object to this Object instance
 
         Args:
@@ -74,9 +104,9 @@ class User:
         Raises:
             AssertionError: no new user can be added after reaching the limit
         """
-        user = manager.get_user_by_id(self.user_id)
+        user = self.manager.get_user_by_id(self.user_id)
         if user is None:
-            user = manager.new_user(
+            user = self.manager.new_user(
                 self.user_id,
                 (self.first_name if self.first_name is not None else self.username),
             )
@@ -87,9 +117,14 @@ class User:
 
     def response(self, type: str, score: int):
         if not self.days or self.days[-1].date != time.strftime("%Y-%m-%d"):
-            self.days.append(User.Day(time.strftime("%Y-%m-%d"), []))
-        self.days[-1].responses.append(tuple(time.strftime("%H:%M"), type, score))
+            self.days.append(Day(time.strftime("%Y-%m-%d"), []))
+        self.days[-1].responses.append(Response(time.strftime('%H:%M'), type, score))
+        # tuple(time.strftime("%H:%M"), type, score))
         # TODO: add achievements parsing
+
+    def add_time(self, time: str):
+        for poll in self.polls:
+            pass
 
     @property
     def calendar(self):
@@ -107,15 +142,16 @@ class User:
         responses: dict[str, int] = data["responses"]
         achievements = data["achievements"]
         return User(
+            polls=[Poll("12:10", "mood")],
             user_id=user_id,
             days=[
                 User.Day(key, [("12:10", "mood", value)])
                 for key, value in responses.items()
             ],
-            achievements=[User.Achievement(a, "00:00") for a in achievements],
+            achievements=[Achievement(a, "00:00") for a in achievements],
             gptmanager=manager,
             meta=dict(
-                new=True,
+                # new=True,
                 demog=demog,
                 code=code,
                 lang=lang,
@@ -123,18 +159,21 @@ class User:
             ),
         )
 
+    def dumps(self):
+        d = {
+            k: v
+            for k, v in asdict(self).items()
+            if k not in ('manager', 'achievements', 'days')
+        }
+        d['days'] = [day.to_dict() for day in self.days]
+        d['achievements'] = [ach.to_dict() for ach in self.achievements]
+        return d
+
     def dump(self, folder):
         with open(
             os.path.join(folder, "{}.json".format(self.user_id)), "w", encoding="utf-8"
         ) as f:
-            json.dump(
-                dict(
-                    user_id=self.user_id,
-                    first_name=self.first_name,
-                    days=[day.to_dict() for day in self.days],
-                    achievements=[a.to_dict() for a in self.achievements],
-                )
-            )
+            json.dump(self.dumps(), f, ensure_ascii=False, indent=4)
 
     @classmethod
     def load(cls, user_id: int, folder: str, manager: GptUserManager):
@@ -142,5 +181,13 @@ class User:
             os.path.join(folder, "{}.json".format(str(user_id))), encoding="utf-8"
         ) as f:
             data = json.load(f)
-        if "meta" not in data:
-            return cls.parse_old_data(data, user_id, manager)
+        data['days'] = [Day.from_dict(day) for day in data['days']]
+        data['achievements'] = [
+            Achievement.from_dict(ach)
+            for ach in data['achievements']]
+        data['manager'] = manager
+        # if "meta" not in data:
+        #     return cls.parse_old_data(data, user_id, manager)
+        return User(
+            **data
+        )
