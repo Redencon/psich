@@ -19,10 +19,12 @@ the score, the type of score
 import os
 import time
 import json
-from typing import Optional
+from typing import Optional, Final
 from gpt_users import User as GptUser, UserManager as GptUserManager
 from dataclasses import dataclass, asdict, field
 # import achievements as acv
+
+MIN_POLL_DISTANCE: Final[int] = 60
 
 
 @dataclass
@@ -53,7 +55,7 @@ class Day:
         return cls(date=d["date"], responses=[Response(**v) for v in d["responses"]])
 
     def to_dict(self):
-        return dict(date=self.date, responses=[dict(r) for r in self.responses])
+        return dict(date=self.date, responses=[r.to_dict() for r in self.responses])
 
 
 @dataclass
@@ -122,15 +124,24 @@ class User:
         # tuple(time.strftime("%H:%M"), type, score))
         # TODO: add achievements parsing
 
-    def add_time(self, time: str):
+    def add_poll(self, time: str, type: str):
+        def far_enough(time1: str, time2: str) -> bool:
+            h1, m1 = map(int, time1.split(':'))
+            h2, m2 = map(int, time2.split(':'))
+            mindiff = abs((h2-h1)*60 + m2-m1)
+            return mindiff >= MIN_POLL_DISTANCE
+
         for poll in self.polls:
-            pass
+            if not far_enough(time, poll.time):
+                return False
+        self.polls.append(Poll(time, type))
+        return True
 
     @property
     def calendar(self):
         ret = {}
         for day in self.days:
-            valid = [response[2] for response in day.responses if response[1] == "mood"]
+            valid = [response.score for response in day.responses if response.type == "mood"]
             ret[day.date] = round(sum(valid) / len(valid))
         return ret
 
@@ -144,12 +155,14 @@ class User:
         return User(
             polls=[Poll("12:10", "mood")],
             user_id=user_id,
+            username=None,
+            first_name=None,
             days=[
-                User.Day(key, [("12:10", "mood", value)])
+                Day(key, [Response("12:10", "mood", value)])
                 for key, value in responses.items()
             ],
-            achievements=[Achievement(a, "00:00") for a in achievements],
-            gptmanager=manager,
+            achievements=[Achievement(a, "00:00", None) for a in achievements],
+            manager=manager,
             meta=dict(
                 # new=True,
                 demog=demog,
@@ -163,10 +176,11 @@ class User:
         d = {
             k: v
             for k, v in asdict(self).items()
-            if k not in ('manager', 'achievements', 'days')
+            if k not in ('manager', 'achievements', 'days', 'polls')
         }
         d['days'] = [day.to_dict() for day in self.days]
         d['achievements'] = [ach.to_dict() for ach in self.achievements]
+        d['polls'] = [poll.to_dict() for poll in self.polls]
         return d
 
     def dump(self, folder):
@@ -181,13 +195,4 @@ class User:
             os.path.join(folder, "{}.json".format(str(user_id))), encoding="utf-8"
         ) as f:
             data = json.load(f)
-        data['days'] = [Day.from_dict(day) for day in data['days']]
-        data['achievements'] = [
-            Achievement.from_dict(ach)
-            for ach in data['achievements']]
-        data['manager'] = manager
-        # if "meta" not in data:
-        #     return cls.parse_old_data(data, user_id, manager)
-        return User(
-            **data
-        )
+        return User.from_dict(data, manager)
