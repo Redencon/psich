@@ -196,3 +196,51 @@ class User:
         ) as f:
             data = json.load(f)
         return User.from_dict(data, manager)
+
+
+class UserManager:
+    @dataclass
+    class SignedPoll(Poll):
+        user_id: int
+    
+    @dataclass
+    class AggregatedData:
+        pass
+
+    def __init__(self, folder, manager: GptUserManager) -> None:
+        self.users: dict[int, User] = {}
+        self.manager = manager
+        self.folder = folder
+        for userfile in os.listdir(folder):
+            with open(os.path.join(folder, userfile), encoding='utf-8') as file:
+                d = json.load(file)
+            user = User.from_dict(d, manager)
+            self.users[user.user_id] = user
+    
+    def dump_user(self, user_id: int):
+        self.users[user_id].dump(self.folder)
+    
+    def new_user(
+            self,
+            user_id: int,
+            username: Optional[str] = None,
+            firstname: Optional[str] = None,
+            **kwargs
+    ):
+        if user_id in self.users: raise KeyError("User {} is already in manager".format(user_id))
+        self.users[user_id] = User(
+            user_id,
+            username,
+            firstname,
+            polls=[],
+            days=[],
+            achievements=[],
+            manager=self.manager,
+            meta=kwargs
+        )
+        self.dump_user(user_id)
+    
+    def rm_user(self, user_id):
+        if user_id not in self.users: raise KeyError("User {} is not in manager. Deletion failed.".format(user_id))
+        del self.users(user_id)
+        os.remove(os.path.join(self.folder, user_id))

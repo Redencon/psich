@@ -17,6 +17,7 @@ from gmail_send_message import send_code
 import yaml
 import random
 import gpt_users
+import responses
 from achievements import add_achievement
 from achievements import streak_achievement
 from achievements import average_consistency_achievement
@@ -47,7 +48,7 @@ BLACKLIST_FILE = secret["BLACKLIST_FILE"]
 START_FILE = secret["START_FILE"]
 LOC_FILE = secret["LOC_FILE"]
 DOMEN = secret["DOMEN"]
-S = True
+s = True
 
 TextPack = dict[str, dict[str, str]]
 
@@ -55,7 +56,7 @@ with open(LOC_FILE, "r", encoding="utf-8") as file:
     all_text = yaml.safe_load(file)
     service: TextPack = {key: all_text[key]["service"] for key in all_text}
     commands: TextPack = {key: all_text[key]["commands"] for key in all_text}
-    responses: TextPack = {key: all_text[key]["responses"] for key in all_text}
+    respons_texts: TextPack = {key: all_text[key]["responses"] for key in all_text}
     achievements_d: TextPack = {key: all_text[key]["achievements"] for key in all_text}
     help_d: TextPack = {key: all_text[key]["help"] for key in all_text}
     description: TextPack = {
@@ -71,6 +72,7 @@ with open(LOC_FILE, "r", encoding="utf-8") as file:
 bot = telebot.TeleBot(TOKEN)
 
 chat_users = gpt_users.UserManager()
+poll_users = responses.UserManager(RESPONSES_FOLDER, chat_users)
 
 gens = statusClasses.GeneralData(GENERAL_FILE, bot, ADMIN)
 pend = statusClasses.Pending_users(PENDING_FILE)
@@ -298,8 +300,8 @@ def update(_: types.Message):
     import subprocess
 
     subprocess.Popen(START_FILE, creationflags=subprocess.CREATE_NEW_CONSOLE)
-    global S
-    S = False
+    global s
+    s = False
     sys.exit()
 
 
@@ -396,7 +398,7 @@ def parse_survey(call: types.CallbackQuery):
         call.message.id,
         reply_markup=None,
     )
-    bot.send_message(call.message.chat.id, random.choice(responses[lang][answer]))
+    bot.send_message(call.message.chat.id, random.choice(respons_texts[lang][answer]))
     for i in (3, 7, 14, 30, 61, 150):
         a = streak_achievement(call.from_user.id, i, RESPONSES_FOLDER + "/")
         if a is not None:
@@ -982,6 +984,6 @@ if __name__ == "__main__":
     del description
     del short_description
     print("Начала работу")
-    while S:
+    while s:
         schedule.run_pending()
         time.sleep(1)
