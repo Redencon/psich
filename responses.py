@@ -19,12 +19,14 @@ the score, the type of score
 import os
 import time
 import json
-from typing import Optional, Final
+from typing import Optional, Final, Generator
 from gpt_users import User as GptUser, UserManager as GptUserManager
 from dataclasses import dataclass, asdict, field
 # import achievements as acv
 
 MIN_POLL_DISTANCE: Final[int] = 60
+DATE_FORMAT = "%Y-%m-%d"
+ARBITRARY_THRESHOLD = 4
 
 
 @dataclass
@@ -68,6 +70,40 @@ class Achievement:
 
 
 @dataclass
+class LastDay:
+    date: str
+    poll_count: dict[str, int]
+
+    def register_poll(self, tpe: str):
+        today = time.strftime(DATE_FORMAT)
+        if self.date != today:
+            self.date = today
+            self.poll_count = {}
+        if tpe not in self.poll_count:
+            self.poll_count[tpe] = 1
+        else:
+            self.poll_count[tpe] += 1
+    
+    def poll_needed(self, tpe: str, polls_needed: int) -> bool:
+        today = time.strftime(DATE_FORMAT)
+        if self.date != today:
+            self.date = today
+            self.poll_count = {}
+            return True
+        if tpe not in self.poll_count:
+            return True
+        if self.poll_count[tpe] < polls_needed:
+            return True
+        return False
+    
+    @classmethod
+    def denovo(cls):
+        return cls(time.strftime, {})
+
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
 class User:
     user_id: int
     username: Optional[str]
@@ -77,6 +113,7 @@ class User:
     achievements: list[Achievement]
     meta: dict
     manager: GptUserManager
+    lastday: LastDay
     gptuser: GptUser = field(init=False)
 
     def __post_init__(
@@ -94,7 +131,8 @@ class User:
             },
             days=[Day.from_dict(day) for day in d["days"]],
             achievements=[Achievement(**ach) for ach in d["achievements"]],
-            polls=[Poll(**poll) for poll in d['polls']]
+            polls=[Poll(**poll) for poll in d['polls']],
+            lastday=[LastDay(**d["lastday"])]
         )
 
     def set_gpt_user(self):
@@ -118,8 +156,8 @@ class User:
         self.gptuser = user
 
     def response(self, type: str, score: int):
-        if not self.days or self.days[-1].date != time.strftime("%Y-%m-%d"):
-            self.days.append(Day(time.strftime("%Y-%m-%d"), []))
+        if not self.days or self.days[-1].date != time.strftime(DATE_FORMAT):
+            self.days.append(Day(time.strftime(DATE_FORMAT), []))
         self.days[-1].responses.append(Response(time.strftime('%H:%M'), type, score))
         # tuple(time.strftime("%H:%M"), type, score))
         # TODO: add achievements parsing
@@ -136,6 +174,24 @@ class User:
                 return False
         self.polls.append(Poll(time, type))
         return True
+
+    def is_poll_needed(self, tpe: str) -> bool:
+        def was_before(poll_time: str):
+            poll_h, poll_m = map(int, poll_time.split(':'))
+            now = time.localtime()
+            now_h = now.tm_hour; now_m = now.tm_min
+            del now
+            return now_h > poll_h or (now_h == poll_h and now_m >= poll_m)
+        polls_needed_for_today_count = 0
+        for poll in self.polls:
+            if poll.type == tpe and was_before(poll.time):
+                polls_needed_for_today_count += 1
+        return self.lastday.poll_needed(tpe, polls_needed_for_today_count)
+
+    def polls_pending(self):
+        poll_types = set(poll.type for poll in self.polls)
+        for tpe in poll_types:
+            if self.is_poll_needed(tpe): yield tpe
 
     @property
     def calendar(self):
@@ -181,6 +237,7 @@ class User:
         d['days'] = [day.to_dict() for day in self.days]
         d['achievements'] = [ach.to_dict() for ach in self.achievements]
         d['polls'] = [poll.to_dict() for poll in self.polls]
+        d['lastday'] = self.lastday.to_dict()
         return d
 
     def dump(self, folder):
@@ -205,18 +262,56 @@ class UserManager:
     
     @dataclass
     class AggregatedData:
-        pass
+        total: int
+        count: int
+
+        @property
+        def average(self, ndig = None):
+            if self.count < ARBITRARY_THRESHOLD:
+                return None
+            if ndig is None:
+                return round(self.total/self.count)
+            return round(self.total/self.count, ndig)
+        
+        def add(self, score):
+            self.total += score
+            self.count += 1
+
+    @property
+    def __today(self):
+        return time.strftime(DATE_FORMAT)
 
     def __init__(self, folder, manager: GptUserManager) -> None:
         self.users: dict[int, User] = {}
         self.manager = manager
         self.folder = folder
+        self.agg: dict[str, str|UserManager.AggregatedData] = {'date': self.__today}
         for userfile in os.listdir(folder):
             with open(os.path.join(folder, userfile), encoding='utf-8') as file:
                 d = json.load(file)
             user = User.from_dict(d, manager)
             self.users[user.user_id] = user
-    
+            if user.days[-1].date == self.__today:
+                for response in user.days[-1].responses:
+                    self.agg_add(response.type, response.score)
+
+    def needed_polls_stack(self):
+        for user_id in self.users:
+            for poll_type in self.users[user_id].polls_pending():
+                yield (user_id, poll_type)
+
+    def agg_add(self, tpe, score):
+        if self.agg['date'] != self.__today:
+            self.agg = {'date': self.__today}
+        if tpe not in self.agg:
+            self.agg[tpe] = self.AggregatedData(score, 1)
+        else:
+            self.agg[tpe].add(score)
+
+    def new_response(self, user_id: int, tpe: str, score: int):
+        self.users[user_id].response(tpe, score)
+        self.agg_add(tpe, score)
+
     def dump_user(self, user_id: int):
         self.users[user_id].dump(self.folder)
     
@@ -236,6 +331,7 @@ class UserManager:
             days=[],
             achievements=[],
             manager=self.manager,
+            lastday=LastDay.denovo(),
             meta=kwargs
         )
         self.dump_user(user_id)
