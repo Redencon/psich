@@ -227,7 +227,7 @@ def get_lang(user: types.User):
     return poll_user.meta["lang"]
 
 
-def demog_init(user_id: int, chat_id: int = None, message_id: int = None):
+def demog_init(user_id: int, lang: str, chat_id: int = None, message_id: int = None):
     """Send the first message of demography poll.
 
     Provide chat and message id to edit a previous message into it instead
@@ -352,7 +352,7 @@ def start_response(call: types.CallbackQuery):
     poll_user = poll_users.users[call.from_user.id]
     if call.data[-1] == "y":
         if "demog" not in poll_user.meta or "lgbt" not in poll_user.meta["demog"]:
-            demog_init(call.from_user.id)
+            demog_init(call.from_user.id, lang)
             return
         time_present(call.message.chat.id)
         return
@@ -531,6 +531,11 @@ def update_admin(tpe):
             continue
         if text == tracker.current_txt:
             continue
+        a = poll_users.users.get(tracker.chat_id, None)
+        if a is None:
+            lang = "en"
+        else:
+            lang = a.meta.get("lang", "en")
         try:
             bot.edit_message_text(
                 service[lang]["today_text"].format(
@@ -651,6 +656,7 @@ def today(message: types.Message):
 
 @bot.callback_query_handler(lambda call: call.data[:3] == "TR_")
 def tr_request(call: types.CallbackQuery):
+    lang = get_lang(call.from_user)
     tpe = call.data[3:]
     bot.answer_callback_query(call.id)
     if tpe == "none":
@@ -1044,7 +1050,8 @@ def send_report(_):
 
 @bot.message_handler(["demog"])
 def demog_manual(message: types.Message):
-    demog_init(message.from_user.id)
+    lang = get_lang(message.from_user)
+    demog_init(message.from_user.id, lang)
     poll_users.users[message.from_user.id].meta["demog"] = {}
     poll_users.dump_user(message.from_user.id)
 
@@ -1052,7 +1059,7 @@ def demog_manual(message: types.Message):
 @bot.message_handler(["forcedemog"], lambda m: m.from_user.id == ADMIN)
 def force_demog(_: types.Message):
     for uid, user in poll_users.users.items():
-        demog_init(uid)
+        demog_init(uid, user.meta.get("lang", "en"))
         user.meta["demog"] = {}
         poll_users.dump_user(uid)
     bot.send_message(ADMIN, "Sent renewed demog polls")
@@ -1154,9 +1161,9 @@ if __name__ == "__main__":
     ).start()
     forced_polls()
     set_commands(types.BotCommandScope())
-    for lang in ("ru", "en"):
-        bot.set_my_description(description[lang], language_code=lang)
-        bot.set_my_short_description(short_description[lang], language_code=lang)
+    for lan in ("ru", "en"):
+        bot.set_my_description(description[lan], language_code=lan)
+        bot.set_my_short_description(short_description[lan], language_code=lan)
     del description
     del short_description
     print("Начала работу")
