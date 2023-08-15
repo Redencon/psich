@@ -1187,6 +1187,7 @@ if __name__ == "__main__":
     ).start()
     forced_polls()
     set_commands(types.BotCommandScope())
+    bot.delete_my_commands(scope=types.BotCommandScopeAllPrivateChats())
     for lan in ("ru", "en"):
         bot.set_my_description(description[lan], language_code=lan)
         bot.set_my_short_description(short_description[lan], language_code=lan)

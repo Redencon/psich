@@ -97,9 +97,9 @@ class LastDay:
         if self.date != today:
             self.date = today
             self.poll_count = {}
-            return True
+            return polls_needed > 0
         if tpe not in self.poll_count:
-            return True
+            return polls_needed > 0
         if self.poll_count[tpe] < polls_needed:
             return True
         return False
@@ -374,6 +374,7 @@ class UserManager:
         for user_id in self.users:
             for poll_type in self.users[user_id].polls_pending():
                 yield (user_id, poll_type)
+            self.dump_user(user_id)
 
     def track(self, tpe, score):
         if self.tracker.date != self.__today:
