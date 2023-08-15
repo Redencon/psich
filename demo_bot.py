@@ -197,8 +197,12 @@ def wanna_get(message: types.Message):
         reply_markup=types.InlineKeyboardMarkup(
             [
                 [
-                    types.InlineKeyboardButton("Да", callback_data="ST_y"),
-                    types.InlineKeyboardButton("Нет", callback_data="ST_n"),
+                    types.InlineKeyboardButton(
+                        ("Yes" if lang == "en" else "Да"), callback_data="ST_y"
+                    ),
+                    types.InlineKeyboardButton(
+                        ("No" if lang == "en" else "Нет"), callback_data="ST_n"
+                    ),
                 ]
             ]
         ),
@@ -251,7 +255,7 @@ def demog_init(user_id: int, chat_id: int = None, message_id: int = None):
 
 
 def registered_only(func):
-    def new_func(message: types.Message):
+    def new_func(message: types.Message, *m, **kw):
         try:
             lang = get_lang(message.from_user)
             poll_user = poll_users.users.get(message.from_user.id)
@@ -260,11 +264,12 @@ def registered_only(func):
                 and "demog" in poll_user.meta
                 and "lgbt" in poll_user.meta["demog"]
             ):
-                return func(message)
+                return func(message, *m, **kw)
             else:
                 bot.send_message(message.chat.id, service[lang]["must_register"])
-        except ApiException:
+        except ApiException as e:
             bot.send_message(message.chat.id, service[lang]["must_register"])
+            bot.send_message(ADMIN, "{}".format(e))
 
     return new_func
 
@@ -297,14 +302,13 @@ def update(_: types.Message):
 @bot.message_handler(commands=["start"])
 def start(message: types.Message):
     if message.from_user.id not in poll_users.users:
-        poll_users.new_user(
+        lang = get_lang(message.from_user)
+        poll_user = poll_users.new_user(
             message.from_user.id,
             message.from_user.username,
             message.from_user.first_name,
         )
-    poll_user = poll_users.users[message.from_user.id]
-    if message.from_user.id not in poll_users.users:
-        lang = get_lang(message.from_user)
+
         if DOMEN is not None:
             bot.send_message(message.chat.id, service[lang]["verification"])
             poll_user.meta["verified"] = False
@@ -342,7 +346,7 @@ def start_response(call: types.CallbackQuery):
     bot.edit_message_text(
         service[lang]["thanks"], call.message.chat.id, call.message.id
     )
-    if call.from_user.id not in poll_users:
+    if call.from_user.id not in poll_users.users:
         bot.send_message(call.from_user.id, service[lang]["must_register"])
         return
     poll_user = poll_users.users[call.from_user.id]
@@ -794,7 +798,7 @@ def time_picker_handler(call: types.CallbackQuery):
         )
         return
     if data[0] in ("+", "-"):
-        amount = int(data[-1])
+        amount = int(data[:-1])
         if data[-1] == "h":
             h = int(keyboard[1][1].text)
             h = (h + amount) % 24
@@ -810,13 +814,13 @@ def time_picker_handler(call: types.CallbackQuery):
             reply_markup=types.InlineKeyboardMarkup(keyboard),
         )
         return
-    if data[0] == "default":
+    if data == "default":
         bot.answer_callback_query(call.id)
         bot.edit_message_reply_markup(
             call.message.chat.id, call.message.id, reply_markup=default_time_keyboard()
         )
         return
-    if data[0] == "done":
+    if data == "done":
         bot.answer_callback_query(call.id)
         actual_current_type = type_map[current_type]
         h = keyboard[1][1].text
@@ -826,9 +830,6 @@ def time_picker_handler(call: types.CallbackQuery):
         )
         if poll_users.users[call.from_user.id].is_poll_needed(actual_current_type):
             poll(call.from_user.id, actual_current_type, lang)
-            poll_users.users[call.from_user.id].lastday.register_poll(
-                actual_current_type
-            )
         poll_users.dump_user(call.from_user.id)
 
 
@@ -842,10 +843,10 @@ def time_present(message: types.Message):
         reply_markup=types.InlineKeyboardMarkup(
             [
                 [
-                    types.InlineKeyboardButton("🌠", "PC_mood"),
-                    types.InlineKeyboardButton("💊", "PC_health"),
-                    types.InlineKeyboardButton("🔴", "PC_cancel"),
-                    types.InlineKeyboardButton("❎", "PC_none"),
+                    types.InlineKeyboardButton("🌠", callback_data="PC_mood"),
+                    types.InlineKeyboardButton("💊", callback_data="PC_health"),
+                    types.InlineKeyboardButton("🔴", callback_data="PC_cancel"),
+                    types.InlineKeyboardButton("❎", callback_data="PC_none"),
                 ]
             ]
         ),
