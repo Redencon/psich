@@ -42,22 +42,38 @@ ru:
       - Я искренне тебе сочуствую. Не стесняйся обращаться за помощью, если тебе кажется, что ты не справляешься.
       - Прости, если мой опрос тебя задел. Я надеюсь, что тебе станет лучше совсем скоро.
   service:
-    poll: |
-      Время для ежедневного опроса!
-      Как ты оцениваешь своё настроение?
-      ❤️ - Замечательно!
-      🧡 - Отлично!
-      💛 - Хорошо!
-      💚 - Нормально.
-      💙 - Не очень.
-      💜 - Мне тяжело.
-      ❤️‍🩹 - У меня большие трудности.
+    poll: 
+      mood: |
+        Время для ежедневного опроса!
+        Как ты оцениваешь своё настроение?
+        ❤️ - Замечательно!
+        🧡 - Отлично!
+        💛 - Хорошо!
+        💚 - Нормально.
+        💙 - Не очень.
+        💜 - Мне тяжело.
+        ❤️‍🩹 - У меня большие трудности.
+      health: |
+        Время для опроса!
+        Как ты оцениваешь своё самочувствие?
+        🔴 - Во мне полно энергии!
+        🟠 - Мне хорошо!
+        🟡 - Не ощущаю проблем.
+        🟢 - Мне не очень хорошо.
+        🔵 - Меня что-то беспокоит.
+        🟣 - Мне плохо.
+        🟤 - Мне сейчас тяжело.
     reminder: Я заметила, что ты ещё не заполнил(а) опрос. Пройди его, пожалуйста!
     wanna_get: Вы согласны получать ежедневные опросы о вашем настроении?
     verification: |
       Для использования бота надо пройти верификацию, используя электронную почту. Адрес будет удалён после верификации.
       Введите свой адрес:
     success: Успех!
+    time_cancel: Выбор времени отменён.
+    type_change: Выбран тип опроса {}
+    today_request: Какую статистику ты хочешь посмотреть - 🌠 настроения, 💊 здоровья.
+    today_text: Среднее за сегодня среди опросов типа {} - {}.
+    today_fail: Недостаточно данных для подсчёта среднего.
     email_wrong_code: Неверный код. Попробуй ещё раз.
     email_wrong_adress: Неверный формат электронной почты. Попробуй ещё раз - напиши в сообщении только свою электронную почту
     email_wrong_domen: Поддерживаются только почтовые адреса домена @phystech.edu. Попробуй ещё раз...
@@ -221,22 +237,39 @@ en:
       - I feel for you wholeheartedly. Feel free to ask for help if you feel like you're not doing well.
       - I'm sorry if my questioning hurt you. If you want, we can try doing something to improve your condition.
   service:
-    poll: |
-      Time for a daily poll!
-      How do you feel yourself today?
-      ❤️ - I'm wonderful!
-      🧡 - I'm great!
-      💛 - I'm good!
-      💚 - I'm okay.
-      💙 - I'm not okay.
-      💜 - I'm struggling.
-      ❤️‍🩹 - I'm having a really hard time.
+    poll: 
+      mood: |
+        Time for a daily poll!
+        How do you feel yourself today?
+        ❤️ - I'm wonderful!
+        🧡 - I'm great!
+        💛 - I'm good!
+        💚 - I'm okay.
+        💙 - I'm not okay.
+        💜 - I'm struggling.
+        ❤️‍🩹 - I'm having a really hard time.
+      health: |
+        Time for a poll!
+        How do you feel?
+        🔴 - I am full of energy!
+        🟠 - I feel great!
+        🟡 - I don't sense any problems.
+        🟢 - I don't feel really well.
+        🔵 - I am bothered by something.
+        🟣 - I feel bad.
+        🟤 - I am struggling.
     reminder: I noticed you haven't answered your poll today. Fill it in, please!
     wanna_get: Do you agree to recieve daily polls?
     verification: |
       To use this bot you have to verify your identity via email. Adress is not stored.
       Enter you email adress:
     success: Success!
+    time_choose: NotImplemented
+    time_cancel: Time choice cancelled.
+    type_change: New poll type chosen - {}
+    today_request: Choose which stats do you want - 🌠 for mood, 💊 for health.
+    today_text: Today average for polls of type {} - {}.
+    today_fail: Insufficient data to calculate average.
     email_wrong_code: Wrong code. Try again.
     email_wrong_adress: Wrong email adress format. Try again - send a message with your email adress only
     email_wrong_domen: Only @phystech.edu email adresses are supported. Try again...

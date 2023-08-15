@@ -19,7 +19,7 @@ the score, the type of score
 import os
 import time
 import json
-from typing import Optional, Final, Generator
+from typing import Optional, Final
 from gpt_users import User as GptUser, UserManager as GptUserManager
 from dataclasses import dataclass, asdict, field
 # import achievements as acv
@@ -75,6 +75,11 @@ class LastDay:
     poll_count: dict[str, int]
 
     def register_poll(self, tpe: str):
+        """Mark poll of given type as sent
+
+        Args:
+            tpe (str): poll type
+        """
         today = time.strftime(DATE_FORMAT)
         if self.date != today:
             self.date = today
@@ -255,62 +260,115 @@ class User:
         return User.from_dict(data, manager)
 
 
+@dataclass
+class AggregatedData:
+    total: int
+    count: int
+
+    def to_dict(self): return asdict(self)
+
+    def average(self, ndig = None):
+        if self.count < ARBITRARY_THRESHOLD:
+            return None
+        if ndig is None:
+            return round(self.total/self.count)
+        return round(self.total/self.count, ndig)
+    
+    def add(self, score):
+        self.total += score
+        self.count += 1
+
+
+@dataclass
+class TrackingMessage:
+    chat_id: int
+    message_id: int
+    tpe: str
+    current_txt: str
+
+    def to_dict(self): return asdict(self)
+
+
+@dataclass
+class Tracker:
+    date: str
+    types_data: dict[str, AggregatedData] = field(default={})
+    tr_messages: list[TrackingMessage] = field(default=[])
+
+    def dump(self, path):
+        with open(path, 'w') as file:
+            json.dump({
+                "date": self.date,
+                "types_data": {tpe: agg.to_dict() for tpe, agg in self.types_data.items()},
+                "tr_messages": [tm.to_dict for tm in self.tr_messages]
+            }, file)
+    
+    @classmethod
+    def load(cls, path):
+        with open(path) as file:
+            data = json.load(file)
+        return cls(
+            date = data["date"],
+            types_data = {tpe: AggregatedData(**agg) for tpe, agg in data["types_data"].items()},
+            tr_messages = [TrackingMessage(**tr) for tr in data["tr_messages"]]
+        )
+
+
 class UserManager:
     @dataclass
     class SignedPoll(Poll):
         user_id: int
     
-    @dataclass
-    class AggregatedData:
-        total: int
-        count: int
-
-        @property
-        def average(self, ndig = None):
-            if self.count < ARBITRARY_THRESHOLD:
-                return None
-            if ndig is None:
-                return round(self.total/self.count)
-            return round(self.total/self.count, ndig)
-        
-        def add(self, score):
-            self.total += score
-            self.count += 1
 
     @property
     def __today(self):
         return time.strftime(DATE_FORMAT)
 
-    def __init__(self, folder, manager: GptUserManager) -> None:
+    def __init__(self, track_file: str, folder, manager: GptUserManager) -> None:
         self.users: dict[int, User] = {}
         self.manager = manager
         self.folder = folder
-        self.agg: dict[str, str|UserManager.AggregatedData] = {'date': self.__today}
+        self.__track_file = track_file
+        self.tracker = Tracker.load(track_file)
         for userfile in os.listdir(folder):
             with open(os.path.join(folder, userfile), encoding='utf-8') as file:
                 d = json.load(file)
             user = User.from_dict(d, manager)
             self.users[user.user_id] = user
-            if user.days[-1].date == self.__today:
-                for response in user.days[-1].responses:
-                    self.agg_add(response.type, response.score)
+    
+    def is_user_verified(self, user_id):
+        if user_id not in self.users: return False
+        if "verified" not in self.users[user_id].meta:
+            self.users[user_id].meta["verified"] = False
+            self.dump_user(user_id)
+        return self.users[user_id].meta["verified"]
 
     def needed_polls_stack(self):
         for user_id in self.users:
             for poll_type in self.users[user_id].polls_pending():
                 yield (user_id, poll_type)
 
-    def agg_add(self, tpe, score):
-        if self.agg['date'] != self.__today:
-            self.agg = {'date': self.__today}
-        if tpe not in self.agg:
-            self.agg[tpe] = self.AggregatedData(score, 1)
+    def track(self, tpe, score):
+        if self.tracker.date != self.__today:
+            self.tracker = Tracker(self.__today)
+        if tpe not in self.tracker.types_data:
+            self.tracker.types_data[tpe] = AggregatedData(score, 1)
         else:
-            self.agg[tpe].add(score)
+            self.tracker.types_data[tpe].add(score)
+        self.dump_tracker()
+    
+    def dump_tracker(self):
+        self.tracker.dump(self.__track_file)
+    
+    # def agg_today(self, tpe, nums=None):
+    #     if self.agg['date'] != self.__today:
+    #         return None
+    #     return self.agg[tpe].average(nums)
 
     def new_response(self, user_id: int, tpe: str, score: int):
         self.users[user_id].response(tpe, score)
         self.agg_add(tpe, score)
+        self.dump_user(user_id)
 
     def dump_user(self, user_id: int):
         self.users[user_id].dump(self.folder)
