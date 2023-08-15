@@ -165,7 +165,7 @@ def dem_response(user_id, key, answer):
     poll_users.dump_user(user_id)
 
 
-def poll(user_id, tpe: str = "mood", lang="ru"):
+def poll(user_id, tpe: str = "mood", lang="ru", manual=False):
     hearts = UsefulStrings.hearts
     if lang is None: lang = "en"
     text = f'{timestamp()}\n{service[lang]["poll"][tpe]}'
@@ -181,7 +181,8 @@ def poll(user_id, tpe: str = "mood", lang="ru"):
     )
     try:
         bot.send_message(user_id, text, reply_markup=markup)
-        poll_users.users[user_id].lastday.register_poll(tpe)
+        if not manual:
+            poll_users.users[user_id].lastday.register_poll(tpe)
     except ApiException:
         poll_users.users[user_id].polls = []
         # dab_upd(STATUS_FILE, user_id, None)
@@ -341,6 +342,35 @@ def help(message: types.Message):
     bot.reply_to(message, help_d[lang][cmd])
     return
 
+
+@bot.message_handler(['poll'])
+@registered_only
+def request_poll(message: types.Message):
+    lang = get_lang(message.from_user)
+    bot.send_message(
+        message.chat.id,
+        service[lang]['get_poll'],
+        reply_markup=types.InlineKeyboardMarkup([[
+            types.InlineKeyboardButton('🌠', callback_data='PR_mood'),
+            types.InlineKeyboardButton('💊', callback_data='PR_health'),
+            types.InlineKeyboardButton('❎', callback_data='PR_cancel')
+        ]])
+    )
+
+
+@bot.callback_query_handler(lambda call: call.data[:3] == "PR_")
+def start_response(call: types.CallbackQuery):
+    lang = get_lang(call.from_user)
+    bot.answer_callback_query(call.id, service[lang]["ok"])
+    tpe = call.data[3:]
+    if tpe == 'cancel':
+        bot.edit_message_text(
+            service[lang]['ok'],
+            call.message.chat.id, call.message.id
+        )
+        return
+    bot.edit_message_reply_markup(call.message.chat.id, call.message.id, None)
+    poll(call.from_user.id, tpe, lang, True)
 
 @bot.callback_query_handler(lambda call: call.data[:3] == "ST_")
 def start_response(call: types.CallbackQuery):
@@ -1189,6 +1219,11 @@ if __name__ == "__main__":
     set_commands(types.BotCommandScope())
     bot.delete_my_commands(scope=types.BotCommandScopeAllPrivateChats())
     for lan in ("ru", "en"):
+        for uid in poll_users.users:
+            bot.delete_my_commands(
+                types.BotCommandScopeChat(uid),
+                lan
+            )
         bot.set_my_description(description[lan], language_code=lan)
         bot.set_my_short_description(short_description[lan], language_code=lan)
     del description
