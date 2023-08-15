@@ -28,7 +28,7 @@ from telebot.apihelper import ApiException
 import statusClasses
 
 SECRET_FILE = sys.argv[1]
-TIMES = ("08:15", "12:10", "15:20", "20:00")
+# TIMES = ("08:15", "12:10", "15:20", "20:00")
 
 with open(SECRET_FILE, "r", encoding="utf-8") as f:
     secret = json.load(f)
@@ -90,6 +90,8 @@ class UsefulStrings:
         "health": ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "🟤"],
     }
     poll_types = {"mood": "🌠", "health": "💊", "FINCHY": "🐺"}
+    poll_list = ["mood", "health"]
+    
 
 
 def get_help():
@@ -165,6 +167,7 @@ def dem_response(user_id, key, answer):
 
 def poll(user_id, tpe: str = "mood", lang="ru"):
     hearts = UsefulStrings.hearts
+    if lang is None: lang = "en"
     text = f'{timestamp()}\n{service[lang]["poll"][tpe]}'
     markup = types.InlineKeyboardMarkup(
         [
@@ -354,7 +357,7 @@ def start_response(call: types.CallbackQuery):
         if "demog" not in poll_user.meta or "lgbt" not in poll_user.meta["demog"]:
             demog_init(call.from_user.id, lang)
             return
-        time_present(call.message.chat.id)
+        send_time(call.from_user.id, lang)
         return
     if call.data[-1] == "n":
         poll_user.polls = []
@@ -422,7 +425,7 @@ def demogr(call: types.CallbackQuery):
         bot.edit_message_text(
             service[lang]["demog_end"], call.message.chat.id, call.message.id
         )
-        time_present(call.message, lang)
+        send_time(call.from_user.id, lang)
         # dab_upd(STATUS_FILE, call.from_user.id, TIMES[1])
         bot.send_message(ADMIN, f"Новый пользователь: {call.from_user.full_name}")
         # if time.localtime()[3] > 12 or (time.localtime()[3] == 12 and time.localtime()[4] > 10):
@@ -448,14 +451,14 @@ def demogr(call: types.CallbackQuery):
         return
 
 
-def calendar(user_id, month, year):
-    user_calendar = poll_users.users[user_id].calendar
+def calendar(user_id, month, year, tpe="mood"):
+    user_calendar = poll_users.users[user_id].calendar(tpe)
     stamp = time.mktime((year, month, 1, 0, 0, 0, 0, 0, -1))
     time_struct = time.localtime(stamp)
     grey = (time_struct.tm_wday - 1 + 1) % 7
     month = [
         time.strftime(
-            responses.DATE_FORMAT, time.mktime((year, month, i, 1, 0, 0, 0, 0, 0, -1))
+            responses.DATE_FORMAT, time.struct_time((year, month, i, 1, 0, 0, 0, 0, 0, -1))
         )
         for i in range(1, days_in_month(month, year) + 1)
     ]
@@ -571,12 +574,13 @@ def stats(message: types.Message):
             service[lang]["stats"],
             str(curmonth),
             str(curyear),
-            calendar(user, curmonth, curyear),
+            calendar(user, curmonth, curyear, UsefulStrings.poll_list[0]),
         ),
         reply_markup=types.InlineKeyboardMarkup(
             [
                 [
                     types.InlineKeyboardButton("◀️", callback_data="SS_-"),
+                    types.InlineKeyboardButton(UsefulStrings.poll_types[UsefulStrings.poll_list[0]], callback_data="SS_0"),
                     types.InlineKeyboardButton("▶️", callback_data="SS_+"),
                 ]
             ]
@@ -589,23 +593,29 @@ def stats(message: types.Message):
 def switch_calendar(call: types.CallbackQuery):
     lang = get_lang(call.from_user)
     data = call.data[-1]
+    i = int(call.message.reply_markup.keyboard[0][1].callback_data[3:]) % len(UsefulStrings.poll_list)
     month, year = map(int, call.message.text.split("\n")[0].split()[-1][:-1].split("/"))
     if data == "+":
         month += 1
         if month == 13:
             year += 1
             month = 1
-    else:
+    elif data == "-":
         month -= 1
         if month == 0:
             year -= 1
             month = 12
+    else:
+        i = (i+1) % len(UsefulStrings.poll_list)
+        call.message.reply_markup.keyboard[0][1].callback_data = 'SS_{}'.format(i)
+    tpe = UsefulStrings.poll_list[i]
+    call.message.reply_markup.keyboard[0][1].text = UsefulStrings.poll_types[tpe]
     bot.edit_message_text(
         "{stats} {month}/{year}:\n{calendar}".format(
             stats=service[lang]["stats"],
             month=month,
             year=year,
-            calendar=calendar(call.from_user.id, month, year),
+            calendar=calendar(call.from_user.id, month, year, tpe),
         ),
         call.message.chat.id,
         call.message.id,
@@ -664,17 +674,27 @@ def tr_request(call: types.CallbackQuery):
             call.message.chat.id, call.message.id, reply_markup=None
         )
         return
-    text = service[lang]["today_text"].format(
-        tpe,
-        UsefulStrings.hearts[tpe][poll_users.tracker.types_data[tpe].average()],
-    )
+    if tpe not in poll_users.tracker.types_data:
+        text = service[lang]['today_fail']
+        bot.edit_message_text(
+            text, call.message.chat.id, call.message.id, reply_markup=None
+        )
+        return
+    avg = poll_users.tracker.types_data[tpe].average()
+    if avg:
+        text = service[lang]["today_text"].format(
+            tpe,
+            UsefulStrings.hearts[tpe][avg],
+        )
+        poll_users.tracker.tr_messages.append(
+            responses.TrackingMessage(call.message.chat.id, call.message.id, tpe, text)
+        )
+        poll_users.dump_tracker()
+    else:
+        text = service[lang]['today_fail']
     bot.edit_message_text(
         text, call.message.chat.id, call.message.id, reply_markup=None
     )
-    poll_users.tracker.tr_messages.append(
-        responses.TrackingMessage(call.message.chat.id, call.message.id, tpe, text)
-    )
-    poll_users.dump_tracker()
 
 
 @bot.callback_query_handler(lambda call: call.data[:3] == "CL_")
@@ -828,6 +848,10 @@ def time_picker_handler(call: types.CallbackQuery):
         return
     if data == "done":
         bot.answer_callback_query(call.id)
+        bot.edit_message_text(
+            service[lang]["ok"],
+            call.message.chat.id, call.message.id
+        )
         actual_current_type = type_map[current_type]
         h = keyboard[1][1].text
         m = keyboard[1][3].text
@@ -839,12 +863,9 @@ def time_picker_handler(call: types.CallbackQuery):
         poll_users.dump_user(call.from_user.id)
 
 
-@bot.message_handler(commands=["time"])
-@registered_only
-def time_present(message: types.Message):
-    lang = get_lang(message.from_user)
+def send_time(uid: int, lang: str):
     bot.send_message(
-        message.chat.id,
+        uid,
         service[lang]["type_choice"],
         reply_markup=types.InlineKeyboardMarkup(
             [
@@ -857,6 +878,13 @@ def time_present(message: types.Message):
             ]
         ),
     )
+
+
+@bot.message_handler(commands=["time"])
+@registered_only
+def time_present(message: types.Message):
+    lang = get_lang(message.from_user)
+    send_time(message.from_user.id, lang)
     return
 
 
@@ -893,7 +921,6 @@ def poll_choose(call: types.CallbackQuery):
         return
     markup = default_time_keyboard()
     markup.keyboard[1][4].text = UsefulStrings.poll_types[tpe]
-    markup.keyboard[1][4].callback_data = "mood" if tpe != "mood" else "health"
     bot.edit_message_text(
         service[lang]["time_kb"],
         call.message.chat.id,
@@ -919,7 +946,7 @@ def time_remove(call: types.CallbackQuery):
     poll_users.users[uid].polls.pop(int(i))
     poll_users.dump_user(uid)
     bot.edit_message_reply_markup(
-        call.message.chat.id, call.message.id, reply_markup=polls_keyboard(uid)
+        call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup(polls_keyboard(uid))
     )
 
 
@@ -1056,7 +1083,7 @@ def demog_manual(message: types.Message):
     poll_users.dump_user(message.from_user.id)
 
 
-@bot.message_handler(["forcedemog"], lambda m: m.from_user.id == ADMIN)
+@bot.message_handler(["forcedemog"], func=lambda m: m.from_user.id == ADMIN)
 def force_demog(_: types.Message):
     for uid, user in poll_users.users.items():
         demog_init(uid, user.meta.get("lang", "en"))
@@ -1154,8 +1181,7 @@ def set_commands(scope=types.BotCommandScopeDefault):
 
 
 if __name__ == "__main__":
-    for elem in TIMES:
-        schedule.every(5).minutes.do(send_polls)
+    schedule.every(5).minutes.do(send_polls)
     threading.Thread(
         target=bot.infinity_polling, name="bot_infinity_polling", daemon=True
     ).start()

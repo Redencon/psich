@@ -122,7 +122,7 @@ class User:
     achievements: list[Achievement]
     meta: dict
     manager: GptUserManager
-    lastday: LastDay
+    lastday: LastDay = field(default_factory=LastDay.denovo)
     gptuser: GptUser = field(init=False)
 
     def __post_init__(
@@ -206,30 +206,36 @@ class User:
             if self.is_poll_needed(tpe):
                 yield tpe
 
-    @property
-    def calendar(self):
+    def calendar(self, tpe):
         ret = {}
         for day in self.days:
             valid = [
-                response.score for response in day.responses if response.type == "mood"
+                response.score for response in day.responses if response.type == tpe
             ]
+            if not valid: continue
             ret[day.date] = round(sum(valid) / len(valid))
         return ret
 
     @staticmethod
     def parse_old_data(data: dict, user_id: int, manager: GptUserManager):
         demog = data["demog"]
-        code = data["code"]
-        lang = data["lang"]
+        code = data.get("code", None)
+        lang = data.get("lang", "ru")
         responses: dict[str, int] = data["responses"]
-        achievements = data["achievements"]
+        def breakdown_date(date: str):
+            y, m, d = map(int, date.split('/'))
+            return time.strftime(
+                DATE_FORMAT,
+                time.struct_time((y, m, d, 0, 0, 0, 0, 0, 0, -1))
+            )
+        achievements = data.get("achievements", [])
         return User(
             polls=[Poll("12:10", "mood")],
             user_id=user_id,
             username=None,
             first_name=None,
             days=[
-                Day(key, [Response("12:10", "mood", value)])
+                Day(breakdown_date(key), [Response("12:10", "mood", value)])
                 for key, value in responses.items()
             ],
             achievements=[Achievement(a, "00:00", None) for a in achievements],
@@ -315,7 +321,7 @@ class Tracker:
                     "types_data": {
                         tpe: agg.to_dict() for tpe, agg in self.types_data.items()
                     },
-                    "tr_messages": [tm.to_dict for tm in self.tr_messages],
+                    "tr_messages": [tm.to_dict() for tm in self.tr_messages],
                 },
                 file,
             )
