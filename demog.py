@@ -20,6 +20,7 @@ pool = {
             ],
         ],
         ["year", "С какого ты курса?", ["1", "2", "3", "4", "5", "6", "7+"]],
+        ["finchy", "Ты знаешь HeyaFinchy?", ["Да", "Нет"]],
         [
             "lgbt",
             "Ваша сексуальная ориентация?",
@@ -38,6 +39,7 @@ pool = {
             "Your age?",
             ["<18", "18-21", "22-28", "29-35", "35-45", "45-62", ">63"],
         ],
+        ["finchy", "Do you know HeyaFinchy?", ["Yes", "No"]],
         ["lgbt", "Your sexual orientation?", ["Hetero", "Homo", "Bi", "Ace", "Skip"]],
     ],
 }

@@ -305,6 +305,8 @@ class Tracker:
     
     @classmethod
     def load(cls, path):
+        if not os.path.exists(path):
+            return cls(time.strftime(DATE_FORMAT))
         with open(path) as file:
             data = json.load(file)
         return cls(
@@ -367,7 +369,7 @@ class UserManager:
 
     def new_response(self, user_id: int, tpe: str, score: int):
         self.users[user_id].response(tpe, score)
-        self.agg_add(tpe, score)
+        self.track(tpe, score)
         self.dump_user(user_id)
 
     def dump_user(self, user_id: int):

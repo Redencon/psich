@@ -70,6 +70,8 @@ ru:
       Введите свой адрес:
     success: Успех!
     time_cancel: Выбор времени отменён.
+    time_kb: Выбери время для опроса.
+    time_rm: Выбери время для опроса, которое надо убрать. ❎ - закончить действие.
     type_change: Выбран тип опроса {}
     today_request: Какую статистику ты хочешь посмотреть - 🌠 настроения, 💊 здоровья.
     today_text: Среднее за сегодня среди опросов типа {} - {}.
@@ -266,7 +268,10 @@ en:
     success: Success!
     time_choose: NotImplemented
     time_cancel: Time choice cancelled.
+    time_kb: Choose poll time.
+    time_rm: Choose polling time to be removed. ❎ - end action.
     type_change: New poll type chosen - {}
+    type_choice: Choose poll type. 🌠 mood, 💊 health, 🔴 remove poll, ❎ cancel action.
     today_request: Choose which stats do you want - 🌠 for mood, 💊 for health.
     today_text: Today average for polls of type {} - {}.
     today_fail: Insufficient data to calculate average.
