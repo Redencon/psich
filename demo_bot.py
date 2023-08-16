@@ -320,10 +320,16 @@ def start(message: types.Message):
             poll_users.dump_user(message.from_user.id)
         else:
             wanna_get(message)
-    else:
-        # Start is equal to /help when user is not new
-        lang = get_lang(message.from_user)
-        bot.reply_to(message, help_d[lang]["help"])
+        return
+    uid = message.from_user.id
+    meta = poll_users.users[uid].meta
+    if "verified" in meta and meta["verified"] == True:
+        if "demog" not in meta or "lgbt" not in meta["demog"]:
+            wanna_get(message)
+            return
+    # Start is equal to /help when user is not new
+    lang = get_lang(message.from_user)
+    bot.reply_to(message, help_d[lang]["help"])
     return
 
 
@@ -434,7 +440,6 @@ def parse_survey(call: types.CallbackQuery):
 
 
 @bot.message_handler(commands=["unsub", "sub"])
-@registered_only
 def unsub(message):
     wanna_get(message)
     return
@@ -526,19 +531,17 @@ def update_admin(tpe):
         )
         for tpe in poll_users.tracker.types_data
     ]
-    text = "\n".join(
-        list(
-            time.strftime(responses.DATE_FORMAT),
-            *[
-                "\n".join(
-                    "Статистика по {}:".format(tpe),
-                    "Ответов: {}, Среднее: {}".format(
-                        cnt, UsefulStrings.hearts[tpe][round(ttl / cnt)]
-                    ),
-                )
-                for tpe, cnt, ttl in tpe_data
-            ],
-        )
+    text = "{}\n{}".format(
+        time.strftime(responses.DATE_FORMAT),
+        "\n".join([
+            "\n".join((
+                "Статистика по {}:".format(tpe),
+                "Ответов: {}, Среднее: {}".format(
+                    cnt, UsefulStrings.hearts[tpe][round(ttl / cnt)]
+                ),
+            ))
+            for tpe, cnt, ttl in tpe_data
+        ]),
     )
     if (
         not poll_users.tracker.tr_messages
@@ -875,6 +878,8 @@ def time_picker_handler(call: types.CallbackQuery):
         return
     if data == "default":
         bot.answer_callback_query(call.id)
+        if call.message.reply_markup == default_time_keyboard():
+            return
         bot.edit_message_reply_markup(
             call.message.chat.id, call.message.id, reply_markup=default_time_keyboard()
         )
