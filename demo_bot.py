@@ -748,6 +748,8 @@ def email_is_awaited(message: types.Message):
         return False
     if message.from_user.id not in poll_users.users:
         return False
+    if "verified" not in poll_users.users[message.from_user.id].meta:
+        poll_users.users[message.from_user.id].meta["verified"] = False
     return not poll_users.users[message.from_user.id].meta["verified"]
 
 
