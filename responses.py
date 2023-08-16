@@ -223,11 +223,14 @@ class User:
         lang = data.get("lang", "ru")
         responses: dict[str, int] = data["responses"]
         def breakdown_date(date: str):
-            y, m, d = map(int, date.split('/'))
-            return time.strftime(
-                DATE_FORMAT,
-                time.struct_time((y, m, d, 0, 0, 0, 0, 0, 0, -1))
-            )
+            try:
+                return time.strftime(
+                    DATE_FORMAT,
+                    time.strptime(date, '%Y/%m/%d')
+                )
+            except TypeError as e:
+                print(time.strftime(DATE_FORMAT))
+                raise KeyboardInterrupt
         achievements = data.get("achievements", [])
         return User(
             polls=[Poll("12:10", "mood")],
@@ -263,14 +266,14 @@ class User:
 
     def dump(self, folder):
         with open(
-            os.path.join(folder, "{}.json".format(self.user_id)), "w", encoding="utf-8"
+            os.path.join(folder, "{}.json".format(self.user_id)), "w"
         ) as f:
-            json.dump(self.dumps(), f, ensure_ascii=False, indent=4)
+            json.dump(self.dumps(), f, indent=4)
 
     @classmethod
     def load(cls, user_id: int, folder: str, manager: GptUserManager):
         with open(
-            os.path.join(folder, "{}.json".format(str(user_id))), encoding="utf-8"
+            os.path.join(folder, "{}.json".format(str(user_id)))
         ) as f:
             data = json.load(f)
         return User.from_dict(data, manager)
@@ -430,4 +433,4 @@ class UserManager:
                 "User {} is not in manager. Deletion failed.".format(user_id)
             )
         del self.users[user_id]
-        os.remove(os.path.join(self.folder, user_id))
+        os.remove(os.path.join(self.folder, "{}.json".format(user_id)))

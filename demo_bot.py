@@ -488,7 +488,7 @@ def calendar(user_id, month, year, tpe="mood"):
     grey = (time_struct.tm_wday - 1 + 1) % 7
     month = [
         time.strftime(
-            responses.DATE_FORMAT, time.struct_time((year, month, i, 1, 0, 0, 0, 0, 0, -1))
+            responses.DATE_FORMAT, time.strptime(f"{year}-{month}-{i}", "%Y-%m-%d")
         )
         for i in range(1, days_in_month(month, year) + 1)
     ]
@@ -1210,10 +1210,19 @@ def set_commands(scope=types.BotCommandScopeDefault):
     return
 
 
+def better_polling():
+    global s
+    while s:
+        try:
+            bot.infinity_polling()
+        except Exception as e:
+            bot.send_message(ADMIN, "{}".format(e))
+
+
 if __name__ == "__main__":
     schedule.every(5).minutes.do(send_polls)
     threading.Thread(
-        target=bot.infinity_polling, name="bot_infinity_polling", daemon=True
+        target=better_polling, name="bot_infinity_polling", daemon=True
     ).start()
     forced_polls()
     set_commands(types.BotCommandScope())

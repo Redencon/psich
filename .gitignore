@@ -1,6 +1,6 @@
 __pycache__/
-responses/
-responses2/
+responses*
+responses2*
 users/
 secret*
 *.ogg
