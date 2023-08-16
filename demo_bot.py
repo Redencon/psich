@@ -412,6 +412,7 @@ def parse_survey(call: types.CallbackQuery):
         call.message.id,
         reply_markup=None,
     )
+    update_admin(tpe)
     bot.send_message(call.message.chat.id, random.choice(respons_texts[lang][answer]))
     # for i in (3, 7, 14, 30, 61, 150):
     #     a = streak_achievement(call.from_user.id, i, RESPONSES_FOLDER + "/")
