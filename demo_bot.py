@@ -38,12 +38,9 @@ ADMIN = secret["ADMIN"]
 ARBITRARY_THRESHOLD = secret["ARBITRARY_THRESHOLD"]
 CHAT = secret["CHAT"]
 RESPONSES_FOLDER = secret["RESPONSES_FOLDER"]
-# STATUS_FILE = secret["STATUS_FILE"]
 POOL_FILE = secret["POOL_FILE"]
 TRACK_FILE = secret["TRACK_FILE"]
-# GENERAL_FILE = secret["GENERAL_FILE"]
-# PENDING_FILE = secret["PENDING_FILE"]
-# BLACKLIST_FILE = secret["BLACKLIST_FILE"]
+GROUPS_FILE = secret["GROUPS_FILE"]
 START_FILE = secret["START_FILE"]
 LOC_FILE = secret["LOC_FILE"]
 DOMEN = secret["DOMEN"]
@@ -75,7 +72,7 @@ with open(LOC_FILE, "r", encoding="utf-8") as file:
 bot = telebot.TeleBot(TOKEN)
 
 chat_users = gpt_users.UserManager()
-poll_users = responses.UserManager(TRACK_FILE, RESPONSES_FOLDER, chat_users)
+poll_users = responses.UserManager(secret, chat_users)
 
 # gens = statusClasses.GeneralData(GENERAL_FILE, bot, ADMIN)
 # pend = statusClasses.Pending_users(PENDING_FILE)

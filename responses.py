@@ -21,7 +21,7 @@ import time
 import json
 from typing import Optional, Final
 from gpt_users import User as GptUser, UserManager as GptUserManager
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field, InitVar
 
 # import achievements as acv
 
@@ -118,6 +118,7 @@ class User:
     username: Optional[str]
     first_name: Optional[str]
     polls: list[Poll]
+    groups: set[str]
     days: list[Day]
     achievements: list[Achievement]
     meta: dict
@@ -136,13 +137,14 @@ class User:
             **{
                 key: value
                 for key, value in d.items()
-                if key not in ("manager", "achievements", "days", "polls", "lastday")
+                if key not in ("manager", "achievements", "days", "polls", "lastday", "groups")
             },
             days=[Day.from_dict(day) for day in d["days"]],
             achievements=[Achievement(**ach) for ach in d["achievements"]],
             polls=[Poll(**poll) for poll in d["polls"]],
             lastday=LastDay(**d["lastday"]),
-            manager=manager
+            manager=manager,
+            groups = set(d["groups"])
         )
 
     def set_gpt_user(self):
@@ -256,12 +258,13 @@ class User:
         d = {
             k: v
             for k, v in asdict(self).items()
-            if k not in ("manager", "achievements", "days", "polls", "gptuser")
+            if k not in ("manager", "achievements", "days", "polls", "gptuser", "groups")
         }
         d["days"] = [day.to_dict() for day in self.days]
         d["achievements"] = [ach.to_dict() for ach in self.achievements]
         d["polls"] = [poll.to_dict() for poll in self.polls]
         d["lastday"] = self.lastday.to_dict()
+        d["groups"] = list(self.groups)
         return d
 
     def dump(self, folder):
@@ -344,6 +347,20 @@ class Tracker:
         )
 
 
+@dataclass
+class Group:
+    name: str
+    description: str
+    user_list: InitVar[list[int]]
+    users: set[int] = field(init=False)
+
+    def __post_init__(self, user_list: list[int]):
+        self.users = set(user_list)
+
+    def to_dict(self): return dict(name=self.name, description=self.description, users=list(self.users))
+
+
+
 class UserManager:
     @dataclass
     class SignedPoll(Poll):
@@ -353,18 +370,47 @@ class UserManager:
     def __today(self):
         return time.strftime(DATE_FORMAT)
 
-    def __init__(self, track_file: str, folder, manager: GptUserManager) -> None:
+    def __init__(self, secret: dict[str, str], manager: GptUserManager) -> None:
         self.users: dict[int, User] = {}
         self.manager = manager
-        self.folder = folder
-        self.__track_file = track_file
-        self.tracker = Tracker.load(track_file)
-        for userfile in os.listdir(folder):
-            with open(os.path.join(folder, userfile), encoding="utf-8") as file:
+        self.folder = secret["RESPONSES_FOLDER"]
+        self.__track_file = secret["TRACK_FILE"]
+        self.tracker = Tracker.load(self.__track_file)
+        self.__groups_file = secret["GROUPS_FILE"]
+        for userfile in os.listdir(self.folder):
+            with open(os.path.join(self.folder, userfile), encoding="utf-8") as file:
                 d = json.load(file)
             user = User.from_dict(d, manager)
             self.users[user.user_id] = user
+        with open(self.__groups_file, encoding='utf-8') as file:
+            self.groups: dict[str, Group] = {gid: Group(**group) for gid, group in json.load(file).items()}
 
+    def dump_groups(self):
+        with open(self.__groups_file, 'w', encoding='utf-8') as file:
+            json.dump({gid: group.to_dict() for gid, group in self.groups.items()}, file, ensure_ascii=False)
+    
+    def add_user_to_group(self, uid, gid):
+        assert uid in self.users, "User {} not in users!".format(uid)
+        assert gid in self.groups, "Group {} not in groups!".format(gid)
+        groups = self.users[uid].groups
+        group = self.groups[gid]
+        group.users.add(uid)
+        groups.add(gid)
+        self.dump_user(uid)
+        self.dump_groups()
+    
+    def rm_user_from_group(self, uid, gid):
+        assert uid in self.users, "User {} not in users!".format(uid)
+        assert gid in self.groups, "Group {} not in groups!".format(gid)
+        groups = self.users[uid].groups
+        group = self.groups[gid]
+        if uid in group.users:
+            group.users.remove(uid)
+        if gid in groups:
+            groups.remove(gid)
+        self.dump_user(uid)
+        self.dump_groups()
+        
     def is_user_verified(self, user_id):
         if user_id not in self.users:
             return False

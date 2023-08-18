@@ -10,6 +10,7 @@ blacklist*
 pending*
 general*
 status*
+group*
 tox.ini
 .vscode/
 track*
