@@ -1,4 +1,7 @@
 ru:
+  name:
+    - Настенька
+    - Диана
   description:
     - |
       Бот ежедневных опросов настроения
@@ -199,6 +202,9 @@ ru:
     delete: УДАЛИТЬ ДАННЫЕ
     # nodata: Данные удалены. Для использования бота используй /start заново
 en:
+  name:
+    - Nastyenka
+    - Diana
   description:
     - |
       Bot for daily mood polls

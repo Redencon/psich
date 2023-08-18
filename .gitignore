@@ -13,3 +13,4 @@ status*
 tox.ini
 .vscode/
 track*
+nohup.out

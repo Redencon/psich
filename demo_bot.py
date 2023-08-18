@@ -8,8 +8,6 @@ import telebot
 import json
 import threading
 import sys
-
-# import typing  # just in case
 import schedule
 from telebot import types
 import time
@@ -60,6 +58,10 @@ with open(LOC_FILE, "r", encoding="utf-8") as file:
     respons_texts: TextPack = {key: all_text[key]["responses"] for key in all_text}
     achievements_d: TextPack = {key: all_text[key]["achievements"] for key in all_text}
     help_d: TextPack = {key: all_text[key]["help"] for key in all_text}
+    name: TextPack = {
+        key: all_text[key]["name"][(0 if TOKEN[0] == "5" else 1)]
+        for key in all_text
+    }
     description: TextPack = {
         key: all_text[key]["description"][(0 if TOKEN[0] == "5" else 1)]
         for key in all_text
@@ -1211,7 +1213,7 @@ def set_commands(scope=types.BotCommandScopeDefault):
     for lang in ("ru", "en"):
         bot.delete_my_commands(scope=scope, language_code=lang)
         bot.set_my_commands(
-            [types.BotCommand(name, commands[lang][name]) for name in commands[lang]],
+            [types.BotCommand(command, commands[lang][command]) for command in commands[lang]],
             scope=scope,
             language_code=lang,
         )
@@ -1241,6 +1243,7 @@ if __name__ == "__main__":
                 types.BotCommandScopeChat(uid),
                 lan
             )
+        bot.set_my_name(name[lan], language_code=lan)
         bot.set_my_description(description[lan], language_code=lan)
         bot.set_my_short_description(short_description[lan], language_code=lan)
     del description
