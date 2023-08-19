@@ -18,6 +18,7 @@ the score, the type of score
 
 import os
 import time
+import datetime
 import json
 from typing import Optional, Final
 from gpt_users import User as GptUser, UserManager as GptUserManager
@@ -167,6 +168,19 @@ class User:
         ), "Max user amount reached, can't add new user: {}!".format(self.username)
         self.gptuser = user
 
+    def last_response_was_long_ago(self):
+        if not self.polls:
+            return True
+        today = datetime.datetime.today()
+        if not self.days:
+            return False
+        last_response = datetime.datetime.strptime(
+            self.days[-1].date,
+            DATE_FORMAT
+        )
+        return (today - last_response).days >= 5
+
+
     def response(self, type: str, score: int):
         if not self.days or self.days[-1].date != time.strftime(DATE_FORMAT):
             self.days.append(Day(time.strftime(DATE_FORMAT), []))
@@ -195,7 +209,6 @@ class User:
             now_m = now.tm_min
             del now
             return now_h > poll_h or (now_h == poll_h and now_m >= poll_m)
-
         polls_needed_for_today_count = 0
         for poll in self.polls:
             if poll.type == tpe and was_before(poll.time):
@@ -357,7 +370,7 @@ class Group:
     def __post_init__(self, user_list: list[int]):
         self.users = set(user_list)
 
-    def to_dict(self): return dict(name=self.name, description=self.description, users=list(self.users))
+    def to_dict(self): return dict(name=self.name, description=self.description, user_list=list(self.users))
 
 
 
@@ -387,7 +400,7 @@ class UserManager:
 
     def dump_groups(self):
         with open(self.__groups_file, 'w', encoding='utf-8') as file:
-            json.dump({gid: group.to_dict() for gid, group in self.groups.items()}, file, ensure_ascii=False)
+            json.dump({gid: group.to_dict() for gid, group in self.groups.items()}, file, indent=4, ensure_ascii=False)
     
     def add_user_to_group(self, uid, gid):
         assert uid in self.users, "User {} not in users!".format(uid)
@@ -421,6 +434,8 @@ class UserManager:
 
     def needed_polls_stack(self):
         for user_id in self.users:
+            if self.users[user_id].last_response_was_long_ago():
+                self.users[user_id].polls = []
             for poll_type in self.users[user_id].polls_pending():
                 yield (user_id, poll_type)
             self.dump_user(user_id)

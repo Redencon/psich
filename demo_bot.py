@@ -16,14 +16,14 @@ import yaml
 import random
 import gpt_users
 import responses
-from achievements import add_achievement
-from achievements import streak_achievement
-from achievements import average_consistency_achievement
+# from achievements import add_achievement
+# from achievements import streak_achievement
+# from achievements import average_consistency_achievement
 from achievements import timestamp
-from achievements import achievement_message
+# from achievements import achievement_message
 from requests.exceptions import ConnectionError, HTTPError
 from telebot.apihelper import ApiException
-import statusClasses
+from surveys import convivnient_slicer, SurveyPool
 
 SECRET_FILE = sys.argv[1]
 # TIMES = ("08:15", "12:10", "15:20", "20:00")
@@ -38,6 +38,7 @@ ADMIN = secret["ADMIN"]
 ARBITRARY_THRESHOLD = secret["ARBITRARY_THRESHOLD"]
 CHAT = secret["CHAT"]
 RESPONSES_FOLDER = secret["RESPONSES_FOLDER"]
+SURVEY_FOLDER = secret["SURVEY_FOLDER"]
 POOL_FILE = secret["POOL_FILE"]
 TRACK_FILE = secret["TRACK_FILE"]
 GROUPS_FILE = secret["GROUPS_FILE"]
@@ -56,8 +57,7 @@ with open(LOC_FILE, "r", encoding="utf-8") as file:
     achievements_d: TextPack = {key: all_text[key]["achievements"] for key in all_text}
     help_d: TextPack = {key: all_text[key]["help"] for key in all_text}
     name: TextPack = {
-        key: all_text[key]["name"][(0 if TOKEN[0] == "5" else 1)]
-        for key in all_text
+        key: all_text[key]["name"][(0 if TOKEN[0] == "5" else 1)] for key in all_text
     }
     description: TextPack = {
         key: all_text[key]["description"][(0 if TOKEN[0] == "5" else 1)]
@@ -73,6 +73,7 @@ bot = telebot.TeleBot(TOKEN)
 
 chat_users = gpt_users.UserManager()
 poll_users = responses.UserManager(secret, chat_users)
+survey_pool = SurveyPool(SURVEY_FOLDER, ("data.bin" if TOKEN[0] == "5" else "data2.bin"))
 
 # gens = statusClasses.GeneralData(GENERAL_FILE, bot, ADMIN)
 # pend = statusClasses.Pending_users(PENDING_FILE)
@@ -90,7 +91,6 @@ class UsefulStrings:
     }
     poll_types = {"mood": "🌠", "health": "💊", "FINCHY": "🐺"}
     poll_list = ["mood", "health"]
-    
 
 
 def get_help():
@@ -107,15 +107,6 @@ def days_in_month(month, year):
     if month in (1, 3, 5, 7, 8, 10, 12):
         return 31
     return 30
-
-
-def convivnient_slicer(li):
-    ret = [[]]
-    for elem in li:
-        if len(ret[-1]) == 3:
-            ret.append([])
-        ret[-1].append(elem)
-    return ret
 
 
 def is_late(ref: str) -> bool:
@@ -166,7 +157,8 @@ def dem_response(user_id, key, answer):
 
 def poll(user_id, tpe: str = "mood", lang="ru", manual=False):
     hearts = UsefulStrings.hearts
-    if lang is None: lang = "en"
+    if lang is None:
+        lang = "en"
     text = f'{timestamp()}\n{service[lang]["poll"][tpe]}'
     markup = types.InlineKeyboardMarkup(
         [
@@ -348,18 +340,22 @@ def help(message: types.Message):
     return
 
 
-@bot.message_handler(['poll'])
+@bot.message_handler(["poll"])
 @registered_only
 def request_poll(message: types.Message):
     lang = get_lang(message.from_user)
     bot.send_message(
         message.chat.id,
-        service[lang]['get_poll'],
-        reply_markup=types.InlineKeyboardMarkup([[
-            types.InlineKeyboardButton('🌠', callback_data='PR_mood'),
-            types.InlineKeyboardButton('💊', callback_data='PR_health'),
-            types.InlineKeyboardButton('❎', callback_data='PR_cancel')
-        ]])
+        service[lang]["get_poll"],
+        reply_markup=types.InlineKeyboardMarkup(
+            [
+                [
+                    types.InlineKeyboardButton("🌠", callback_data="PR_mood"),
+                    types.InlineKeyboardButton("💊", callback_data="PR_health"),
+                    types.InlineKeyboardButton("❎", callback_data="PR_cancel"),
+                ]
+            ]
+        ),
     )
 
 
@@ -368,14 +364,14 @@ def start_response(call: types.CallbackQuery):
     lang = get_lang(call.from_user)
     bot.answer_callback_query(call.id, service[lang]["ok"])
     tpe = call.data[3:]
-    if tpe == 'cancel':
+    if tpe == "cancel":
         bot.edit_message_text(
-            service[lang]['ok'],
-            call.message.chat.id, call.message.id
+            service[lang]["ok"], call.message.chat.id, call.message.id
         )
         return
     bot.edit_message_reply_markup(call.message.chat.id, call.message.id, None)
     poll(call.from_user.id, tpe, lang, True)
+
 
 @bot.callback_query_handler(lambda call: call.data[:3] == "ST_")
 def start_response(call: types.CallbackQuery):
@@ -532,15 +528,19 @@ def update_admin(tpe):
     ]
     text = "{}\n{}".format(
         time.strftime(responses.DATE_FORMAT),
-        "\n".join([
-            "\n".join((
-                "Статистика по {}:".format(tpe),
-                "Ответов: {}, Среднее: {}".format(
-                    cnt, UsefulStrings.hearts[tpe][round(ttl / cnt)]
-                ),
-            ))
-            for tpe, cnt, ttl in tpe_data
-        ]),
+        "\n".join(
+            [
+                "\n".join(
+                    (
+                        "Статистика по {}:".format(tpe),
+                        "Ответов: {}, Среднее: {}".format(
+                            cnt, UsefulStrings.hearts[tpe][round(ttl / cnt)]
+                        ),
+                    )
+                )
+                for tpe, cnt, ttl in tpe_data
+            ]
+        ),
     )
     if (
         not poll_users.tracker.tr_messages
@@ -613,7 +613,10 @@ def stats(message: types.Message):
             [
                 [
                     types.InlineKeyboardButton("◀️", callback_data="SS_-"),
-                    types.InlineKeyboardButton(UsefulStrings.poll_types[UsefulStrings.poll_list[0]], callback_data="SS_0"),
+                    types.InlineKeyboardButton(
+                        UsefulStrings.poll_types[UsefulStrings.poll_list[0]],
+                        callback_data="SS_0",
+                    ),
                     types.InlineKeyboardButton("▶️", callback_data="SS_+"),
                 ]
             ]
@@ -626,7 +629,9 @@ def stats(message: types.Message):
 def switch_calendar(call: types.CallbackQuery):
     lang = get_lang(call.from_user)
     data = call.data[-1]
-    i = int(call.message.reply_markup.keyboard[0][1].callback_data[3:]) % len(UsefulStrings.poll_list)
+    i = int(call.message.reply_markup.keyboard[0][1].callback_data[3:]) % len(
+        UsefulStrings.poll_list
+    )
     month, year = map(int, call.message.text.split("\n")[0].split()[-1][:-1].split("/"))
     if data == "+":
         month += 1
@@ -639,8 +644,8 @@ def switch_calendar(call: types.CallbackQuery):
             year -= 1
             month = 12
     else:
-        i = (i+1) % len(UsefulStrings.poll_list)
-        call.message.reply_markup.keyboard[0][1].callback_data = 'SS_{}'.format(i)
+        i = (i + 1) % len(UsefulStrings.poll_list)
+        call.message.reply_markup.keyboard[0][1].callback_data = "SS_{}".format(i)
     tpe = UsefulStrings.poll_list[i]
     call.message.reply_markup.keyboard[0][1].text = UsefulStrings.poll_types[tpe]
     bot.edit_message_text(
@@ -708,7 +713,7 @@ def tr_request(call: types.CallbackQuery):
         )
         return
     if tpe not in poll_users.tracker.types_data:
-        text = service[lang]['today_fail']
+        text = service[lang]["today_fail"]
         bot.edit_message_text(
             text, call.message.chat.id, call.message.id, reply_markup=None
         )
@@ -724,7 +729,7 @@ def tr_request(call: types.CallbackQuery):
         )
         poll_users.dump_tracker()
     else:
-        text = service[lang]['today_fail']
+        text = service[lang]["today_fail"]
     bot.edit_message_text(
         text, call.message.chat.id, call.message.id, reply_markup=None
     )
@@ -886,8 +891,7 @@ def time_picker_handler(call: types.CallbackQuery):
     if data == "done":
         bot.answer_callback_query(call.id)
         bot.edit_message_text(
-            service[lang]["ok"],
-            call.message.chat.id, call.message.id
+            service[lang]["ok"], call.message.chat.id, call.message.id
         )
         actual_current_type = type_map[current_type]
         h = keyboard[1][1].text
@@ -983,7 +987,9 @@ def time_remove(call: types.CallbackQuery):
     poll_users.users[uid].polls.pop(int(i))
     poll_users.dump_user(uid)
     bot.edit_message_reply_markup(
-        call.message.chat.id, call.message.id, reply_markup=types.InlineKeyboardMarkup(polls_keyboard(uid))
+        call.message.chat.id,
+        call.message.id,
+        reply_markup=types.InlineKeyboardMarkup(polls_keyboard(uid)),
     )
 
 
@@ -1089,6 +1095,116 @@ def language(message: types.Message):
             ]
         ),
     )
+
+
+@bot.message_handler(["groups"])
+@registered_only
+def groups(message: types.Message):
+    lang = get_lang(message.from_user)
+    groups = poll_users.users[message.from_user.id].groups
+    bot.send_message(
+        message.chat.id,
+        service[lang]["groups_init"].format(
+            groups="\n\n".join(
+                [
+                    "{}: {}".format(
+                        poll_users.groups[group].name,
+                        poll_users.groups[group].description,
+                    )
+                    for group in groups
+                ]
+            )
+        ),
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data[:3] == "SA_")
+def survey_answer(call: types.CallbackQuery):
+    lang = get_lang(call.from_user)
+    argvn = len(call.data.split("_"))
+    if argvn == 3:  # Then it's an answer to initial question
+        _, code, ans = call.data.split("_")
+        if ans == "n":
+            bot.answer_callback_query(call.id, service[lang]["ok"])
+            bot.edit_message_text(
+                service[lang]["thanks"], call.message.chat.id, call.message.id
+            )
+            survey_pool.user_declined(code, call.from_user.id)
+            return
+        bot.answer_callback_query(call.id)
+        if code not in survey_pool.active_surveys:
+            bot.edit_message_text(
+                chat_id=call.message.chat.id, message_id=call.message.id,
+                text=service[lang]["survey_expired"]
+            )
+            return
+        bot.edit_message_text(
+            chat_id=call.message.chat.id, message_id=call.message.id,
+            **survey_pool.active_surveys[code].get_question(0),
+        )
+        return
+    assert argvn == 4, "callback data is wrong"
+    if survey_pool.answer(call.from_user.id, call.data):
+        _, code, qid, _ = call.data.split("_")
+        qid = int(qid) + 1
+        if code not in survey_pool.active_surveys:
+            bot.edit_message_text(
+                chat_id=call.message.chat.id, message_id=call.message.id,
+                text=service[lang]["survey_expired"]
+            )
+            return
+        bot.edit_message_text(
+            chat_id=call.message.chat.id, message_id=call.message.id,
+            **survey_pool.get_question(code, qid)
+        )
+
+
+@bot.message_handler(["survey"], func=lambda m: m.from_user.id == ADMIN and len(m.text.split()) >= 2)
+def start_survey(message: types.Message):
+    argv = message.text.split()
+    code = argv[1]
+    if code == "kill":
+        if len(argv) == 2: return
+        code = argv[2]
+        if survey_pool.kill_survey(code):
+            bot.reply_to(message, "Survey {} killed".format(code))
+        else:
+            bot.reply_to(message, "Survey {} not found".format(code))
+        return
+    if code == "list":
+        bot.reply_to(message, "Survey list:\n{}".format("\n".join(survey_pool.active_surveys.keys())))
+        return
+    if code.endswith(".json"):
+        survey = survey_pool.spawn_survey(config_filename=code)
+    else:
+        survey = survey_pool.spawn_survey(code=code)
+    if survey is None:
+        bot.reply_to(message, "No config with such name {} found".format(code))
+        return
+    for user in survey.participants:
+        if user not in poll_users.users:
+            survey_pool.user_declined(survey.code, user)
+            continue
+        lang = poll_users.users[user].meta.get("lang", "en")
+        try:
+            bot.send_message(
+                user,
+                service[lang]["survey_request"].format(survey.init),
+                reply_markup=types.InlineKeyboardMarkup([[
+                    types.InlineKeyboardButton(text=("Yes" if lang == "en" else "Да"), callback_data="SA_{}_y".format(survey.code)),
+                    types.InlineKeyboardButton(text=("No" if lang == "en" else "Нет"), callback_data="SA_{}_n".format(survey.code))
+                ]])
+            )
+        except ApiException:
+            survey_pool.user_declined(survey.code, user)
+    bot.reply_to(message, "Survey started")
+
+
+
+@bot.message_handler(content_types=["document"], func=lambda m: m.from_user.id == ADMIN)
+def recieve_survey_json(message: types.Message):
+    # document = message.document.file_id
+    pass
 
 
 @bot.callback_query_handler(func=lambda call: call.data[:3] == "LG_")
@@ -1210,7 +1326,10 @@ def set_commands(scope=types.BotCommandScopeDefault):
     for lang in ("ru", "en"):
         bot.delete_my_commands(scope=scope, language_code=lang)
         bot.set_my_commands(
-            [types.BotCommand(command, commands[lang][command]) for command in commands[lang]],
+            [
+                types.BotCommand(command, commands[lang][command])
+                for command in commands[lang]
+            ],
             scope=scope,
             language_code=lang,
         )
@@ -1236,13 +1355,10 @@ if __name__ == "__main__":
     bot.delete_my_commands(scope=types.BotCommandScopeAllPrivateChats())
     for lan in ("ru", "en"):
         for uid in poll_users.users:
-            bot.delete_my_commands(
-                types.BotCommandScopeChat(uid),
-                lan
-            )
-        bot.set_my_name(name[lan], language_code=lan)
-        bot.set_my_description(description[lan], language_code=lan)
-        bot.set_my_short_description(short_description[lan], language_code=lan)
+            bot.delete_my_commands(types.BotCommandScopeChat(uid), lan)
+        # bot.set_my_name(name[lan], language_code=lan)
+        # bot.set_my_description(description[lan], language_code=lan)
+        # bot.set_my_short_description(short_description[lan], language_code=lan)
     del description
     del short_description
     print("Начала работу")
