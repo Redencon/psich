@@ -89,6 +89,10 @@ ru:
       Отправь мне полученный код.
     help_fail: Такой команды нет.
     must_register: Для использования бота надо зарегистрироваться. Используй /start
+    survey_request: |
+      Можешь, пожалуйста, пройти этот короткий опрос?
+      {}
+    survey_expired: Опрос был закрыт. Спасибо за участие!
     thanks: Спасибо.
     demog_init: |
       Перед началом использования бота, ответьте на несколько коротких вопросов.
@@ -100,6 +104,12 @@ ru:
     poll_answer: Вы ответили {answer}
     unsub_no: Ну и замечательно.
     unsub_yes: Да будет так.
+    groups_init: |
+      Это список групп, в которых ты состоишь. Свяжись с админом, если хочешь чтобы тебя добавили или убрали из группы.
+      
+      {groups}
+
+      > Позже у тебя будет возможность выбрать себе группу!
     achievements: 🏆Твои достижения🏅
     new_achievement: 🎉НОВОЕ ДОСТИЖЕНИЕ:🎉 
     stats: Твой текущий успех за месяц 
@@ -293,6 +303,10 @@ en:
       Send me the code you've got.
     help_fail: There's no such command.
     must_register: To use the bot you must register. Use /start to start registration
+    survey_request: |
+      Can you please fill out this short survey?
+      {}
+    survey_expired: Survey was closed. Thanks for particicpation!
     thanks: Thanks.
     demog_init: |
       Before you can start using this bot, answer a few questions about yourself.
@@ -304,6 +318,12 @@ en:
     poll_answer: You answered {answer}
     unsub_no: Great.
     unsub_yes: Then so be it.
+    groups_init: |
+      Here's a list of groups you are part of. Contact admin if you want to be added or remove from any group.
+      
+      {groups}
+
+      > Later you'll be able to join groups of choice!
     achievements: 🏆Your achievements🏅
     new_achievement: 🎉NEW ACHIEVEMENT:🎉 
     stats: Your record for this month 
