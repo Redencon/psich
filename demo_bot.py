@@ -180,6 +180,7 @@ def poll(user_id, tpe: str = "mood", lang="ru", manual=False):
 
 
 def send_polls():
+    if time.localtime().tm_min % 5 != 0: return
     for user_id, tpe in poll_users.needed_polls_stack():
         poll(user_id, tpe, poll_users.users[user_id].meta.get("lang", "ru"))
 
@@ -1346,7 +1347,7 @@ def better_polling():
 
 
 if __name__ == "__main__":
-    schedule.every(5).minutes.do(send_polls)
+    schedule.every().minute.at(":00").do(send_polls)
     threading.Thread(
         target=better_polling, name="bot_infinity_polling", daemon=True
     ).start()
