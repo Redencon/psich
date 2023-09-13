@@ -4,9 +4,23 @@ import re
 import json
 import time
 from dataclasses import dataclass
-from typing import Any, TypedDict
+from typing import Any, TypedDict, Optional
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 import pickle
+
+
+class QuestionInFile(TypedDict):
+    question: str
+    answers: list[str]
+    meta: dict[str, Any]
+
+
+class ConfigFile(TypedDict):
+    code: str
+    init: str
+    questions: list[QuestionInFile]
+    participants: list[int]
+    final: Optional[str]
 
 
 def convivnient_slicer(li, row_width=3):
@@ -59,7 +73,8 @@ class Survey:
                             callback_data="SA_{}_{}_{}".format(self.code, i, j),
                         )
                         for j, answer in enumerate(self.questions[i].answers)
-                    ]
+                    ],
+                    (self.questions[i].meta["row_width"] if "row_width" in self.questions[i].meta else 3)
                 )
             ),
         }

@@ -1,10 +1,11 @@
 import pickle
 import random
 import os
+from typing import Optional
 
 
 class User:
-    def __init__(self, id: int, name: str = None):
+    def __init__(self, id: int, name: Optional[str] = None):
         """
         Initializes a pseudonym with the given id and name.
         This is the first step in the creation process.
@@ -141,7 +142,7 @@ class User:
         self.save()
 
     @staticmethod
-    def load(id: int = None, filename: str = None):
+    def load(id: Optional[int] = None, filename: Optional[str] = None):
         """
         Load a user from a file
 
@@ -202,7 +203,7 @@ class UserManager:
         self.users[id] = new_user
         return new_user
 
-    def get_user_by_id(self, id: int) -> User:
+    def get_user_by_id(self, id: int) -> User | None:
         """
         Get a user by id.
 
@@ -217,7 +218,7 @@ class UserManager:
         else:
             return None
 
-    def get_user_by_pseudonym(self, pseudonym) -> User:
+    def get_user_by_pseudonym(self, pseudonym) -> User | None:
         """
         Get a user by pseudonym.
 

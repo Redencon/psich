@@ -119,11 +119,11 @@ class User:
     username: Optional[str]
     first_name: Optional[str]
     polls: list[Poll]
-    groups: set[str]
     days: list[Day]
     achievements: list[Achievement]
     meta: dict
     manager: GptUserManager
+    groups: set[str] = field(default_factory=set)
     lastday: LastDay = field(default_factory=LastDay.denovo)
     gptuser: GptUser = field(init=False)
 
@@ -138,14 +138,15 @@ class User:
             **{
                 key: value
                 for key, value in d.items()
-                if key not in ("manager", "achievements", "days", "polls", "lastday", "groups")
+                if key
+                not in ("manager", "achievements", "days", "polls", "lastday", "groups")
             },
             days=[Day.from_dict(day) for day in d["days"]],
             achievements=[Achievement(**ach) for ach in d["achievements"]],
             polls=[Poll(**poll) for poll in d["polls"]],
             lastday=LastDay(**d["lastday"]),
             manager=manager,
-            groups = set(d["groups"])
+            groups=set(d["groups"])
         )
 
     def set_gpt_user(self):
@@ -174,12 +175,8 @@ class User:
         today = datetime.datetime.today()
         if not self.days:
             return False
-        last_response = datetime.datetime.strptime(
-            self.days[-1].date,
-            DATE_FORMAT
-        )
+        last_response = datetime.datetime.strptime(self.days[-1].date, DATE_FORMAT)
         return (today - last_response).days >= 5
-
 
     def response(self, type: str, score: int):
         if not self.days or self.days[-1].date != time.strftime(DATE_FORMAT):
@@ -209,11 +206,15 @@ class User:
             now_m = now.tm_min
             del now
             return now_h > poll_h or (now_h == poll_h and now_m >= poll_m)
+
         polls_needed_for_today_count = 0
         for poll in self.polls:
             if poll.type == tpe and was_before(poll.time):
                 polls_needed_for_today_count += 1
         return self.lastday.poll_needed(tpe, polls_needed_for_today_count)
+
+    def poll_not_answered(self):
+        self.lastday.poll_count
 
     def polls_pending(self):
         poll_types = set(poll.type for poll in self.polls)
@@ -227,7 +228,8 @@ class User:
             valid = [
                 response.score for response in day.responses if response.type == tpe
             ]
-            if not valid: continue
+            if not valid:
+                continue
             ret[day.date] = round(sum(valid) / len(valid))
         return ret
 
@@ -237,15 +239,14 @@ class User:
         code = data.get("code", None)
         lang = data.get("lang", "ru")
         responses: dict[str, int] = data["responses"]
+
         def breakdown_date(date: str):
             try:
-                return time.strftime(
-                    DATE_FORMAT,
-                    time.strptime(date, '%Y/%m/%d')
-                )
+                return time.strftime(DATE_FORMAT, time.strptime(date, "%Y/%m/%d"))
             except TypeError as e:
                 print(time.strftime(DATE_FORMAT))
                 raise KeyboardInterrupt
+
         achievements = data.get("achievements", [])
         return User(
             polls=[Poll("12:10", "mood")],
@@ -271,7 +272,8 @@ class User:
         d = {
             k: v
             for k, v in asdict(self).items()
-            if k not in ("manager", "achievements", "days", "polls", "gptuser", "groups")
+            if k
+            not in ("manager", "achievements", "days", "polls", "gptuser", "groups")
         }
         d["days"] = [day.to_dict() for day in self.days]
         d["achievements"] = [ach.to_dict() for ach in self.achievements]
@@ -281,16 +283,12 @@ class User:
         return d
 
     def dump(self, folder):
-        with open(
-            os.path.join(folder, "{}.json".format(self.user_id)), "w"
-        ) as f:
+        with open(os.path.join(folder, "{}.json".format(self.user_id)), "w") as f:
             json.dump(self.dumps(), f, indent=4)
 
     @classmethod
     def load(cls, user_id: int, folder: str, manager: GptUserManager):
-        with open(
-            os.path.join(folder, "{}.json".format(str(user_id)))
-        ) as f:
+        with open(os.path.join(folder, "{}.json".format(str(user_id)))) as f:
             data = json.load(f)
         return User.from_dict(data, manager)
 
@@ -303,12 +301,10 @@ class AggregatedData:
     def to_dict(self):
         return dict(total=self.total, count=self.count)
 
-    def average(self, ndig=None):
+    def average(self):
         if self.count < ARBITRARY_THRESHOLD:
             return None
-        if ndig is None:
-            return round(self.total / self.count)
-        return round(self.total / self.count, ndig)
+        return round(self.total / self.count)
 
     def add(self, score):
         self.total += score
@@ -370,8 +366,10 @@ class Group:
     def __post_init__(self, user_list: list[int]):
         self.users = set(user_list)
 
-    def to_dict(self): return dict(name=self.name, description=self.description, user_list=list(self.users))
-
+    def to_dict(self):
+        return dict(
+            name=self.name, description=self.description, user_list=list(self.users)
+        )
 
 
 class UserManager:
@@ -395,13 +393,20 @@ class UserManager:
                 d = json.load(file)
             user = User.from_dict(d, manager)
             self.users[user.user_id] = user
-        with open(self.__groups_file, encoding='utf-8') as file:
-            self.groups: dict[str, Group] = {gid: Group(**group) for gid, group in json.load(file).items()}
+        with open(self.__groups_file, encoding="utf-8") as file:
+            self.groups: dict[str, Group] = {
+                gid: Group(**group) for gid, group in json.load(file).items()
+            }
 
     def dump_groups(self):
-        with open(self.__groups_file, 'w', encoding='utf-8') as file:
-            json.dump({gid: group.to_dict() for gid, group in self.groups.items()}, file, indent=4, ensure_ascii=False)
-    
+        with open(self.__groups_file, "w", encoding="utf-8") as file:
+            json.dump(
+                {gid: group.to_dict() for gid, group in self.groups.items()},
+                file,
+                indent=4,
+                ensure_ascii=False,
+            )
+
     def add_user_to_group(self, uid, gid):
         assert uid in self.users, "User {} not in users!".format(uid)
         assert gid in self.groups, "Group {} not in groups!".format(gid)
@@ -411,7 +416,7 @@ class UserManager:
         groups.add(gid)
         self.dump_user(uid)
         self.dump_groups()
-    
+
     def rm_user_from_group(self, uid, gid):
         assert uid in self.users, "User {} not in users!".format(uid)
         assert gid in self.groups, "Group {} not in groups!".format(gid)
@@ -423,7 +428,7 @@ class UserManager:
             groups.remove(gid)
         self.dump_user(uid)
         self.dump_groups()
-        
+
     def is_user_verified(self, user_id):
         if user_id not in self.users:
             return False
@@ -434,10 +439,13 @@ class UserManager:
 
     def needed_polls_stack(self):
         for user_id in self.users:
+            if self.users[user_id].meta["disabled"]:
+                continue
             if self.users[user_id].last_response_was_long_ago():
-                self.users[user_id].polls = []
-            for poll_type in self.users[user_id].polls_pending():
-                yield (user_id, poll_type)
+                self.users[user_id].meta["disabled"] = True
+            else:
+                for poll_type in self.users[user_id].polls_pending():
+                    yield (user_id, poll_type)
             self.dump_user(user_id)
 
     def track(self, tpe, score):
