@@ -18,7 +18,8 @@ the score, the type of score
 
 import os
 import time
-import datetime
+from datetime import datetime as dtt
+from datetime import timedelta as td
 import json
 from typing import Optional, Final
 from gpt_users import User as GptUser, UserManager as GptUserManager
@@ -170,12 +171,13 @@ class User:
         self.gptuser = user
 
     def last_response_was_long_ago(self):
+        return False
         if not self.polls:
             return True
-        today = datetime.datetime.today()
+        today = dtt.today()
         if not self.days:
             return False
-        last_response = datetime.datetime.strptime(self.days[-1].date, DATE_FORMAT)
+        last_response = dtt.strptime(self.days[-1].date, DATE_FORMAT)
         return (today - last_response).days >= 5
 
     def response(self, type: str, score: int):
@@ -213,8 +215,25 @@ class User:
                 polls_needed_for_today_count += 1
         return self.lastday.poll_needed(tpe, polls_needed_for_today_count)
 
-    def poll_not_answered(self):
-        self.lastday.poll_count
+    def reminder_needed(self):
+        # TODO: write reminder logic
+        if any([val > 0 for val in self.lastday.poll_count.values()]):  # no answers
+            return False
+        if not self.polls:
+            return False
+        now = dtt.now()
+        today = (now.year, now.month, now.day)
+        latest = dtt(*today, 0, 0)
+        for poll in self.polls:
+            h, m = map(int, poll.time.split(":"))
+            if dtt(*today, h, m) > latest:
+                latest = dtt(*today, h, m)
+        if dtt.now() - latest > td(hours=1, minutes=30) and dtt.now() > dtt(
+            *today, 20, 0
+        ):
+            return True
+
+        return False
 
     def polls_pending(self):
         poll_types = set(poll.type for poll in self.polls)
@@ -447,6 +466,13 @@ class UserManager:
                 for poll_type in self.users[user_id].polls_pending():
                     yield (user_id, poll_type)
             self.dump_user(user_id)
+
+    def needed_reminds_stack(self):
+        for user_id in self.users:
+            if self.users[user_id].meta["disabled"]:
+                continue
+            if self.users[user_id].reminder_needed():
+                yield user_id
 
     def track(self, tpe, score):
         if self.tracker.date != self.__today:

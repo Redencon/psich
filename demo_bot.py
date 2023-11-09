@@ -36,7 +36,7 @@ class Link(TypedDict):
     used: bool
 
 
-SECRET_FILE = sys.argv[1]
+SECRET_FILE: str = sys.argv[1]
 # TIMES = ("08:15", "12:10", "15:20", "20:00")
 
 with open(SECRET_FILE, "r", encoding="utf-8") as f:
@@ -199,6 +199,9 @@ def send_polls():
         return
     for user_id, tpe in poll_users.needed_polls_stack():
         poll(user_id, tpe, poll_users.users[user_id].meta.get("lang", "ru"))
+    for user_id in poll_users.needed_reminds_stack():
+        lang = poll_users.users[user_id].meta.get("lang", "ru")
+        bot.send_message(user_id, service[lang]["reminder"])
 
 
 def wanna_get(message: types.Message):
