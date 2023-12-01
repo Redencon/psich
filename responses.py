@@ -519,7 +519,6 @@ class UserManager:
             lastday=LastDay.denovo(),
             meta=kwargs,
         )
-        self.users[user_id].meta["disabled"] = False
         self.dump_user(user_id)
         return self.users[user_id]
 
