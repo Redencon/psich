@@ -18,3 +18,8 @@ tox.ini
 .vscode/
 track*
 nohup.out
+out.txt
+codes.json
+for_elijah.json
+links.json
+links.txt

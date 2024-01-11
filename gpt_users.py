@@ -1,6 +1,7 @@
 import pickle
 import random
 import os
+import json
 from typing import Optional
 
 
@@ -22,87 +23,8 @@ class User:
 
     def roll_pseudonym(self):
         """Generate a random pseudonym"""
-        parts0 = [
-            "soft",
-            "cute",
-            "angry",
-            "fuzzy",
-            "toothy",
-            "stinky",
-            "warm",
-            "whiney",
-            "wet",
-            "sleepy",
-            "happy",
-            "loud",
-            "curious",
-            "subborn",
-            "horny",
-            "rough",
-        ]
-        parts1 = [
-            "cerulean",
-            "chartreuse",
-            "fuchsia",
-            "indigo",
-            "mauve",
-            "olive",
-            "periwinkle",
-            "rust",
-            "teal",
-            "turquoise",
-            "vermilion",
-            "violet",
-            "amber",
-            "burgundy",
-            "coral",
-            "crimson",
-            "emerald",
-            "lavender",
-            "magenta",
-            "marigold",
-            "navy",
-            "peach",
-            "rose",
-            "sapphire",
-        ]
-        parts2 = [
-            "cat",
-            "dog",
-            "bird",
-            "fish",
-            "flower",
-            "tree",
-            "sergull",
-            "hedgehog",
-            "greninja",
-            "xenomorph",
-            "cthulhu",
-            "azathoth",
-            "protogen",
-            "imp",
-            "derg",
-            "phoenix",
-            "ouroboros",
-            "salamander",
-            "fox",
-            "centaurus",
-            "ditto",
-            "cerberus",
-            "owl",
-            "wolf",
-            "chimera",
-            "husky",
-            "collie",
-            "jaguar",
-            "panther",
-            "lion",
-            "eagle",
-            "jay",
-            "duck",
-            "jakal",
-            "axolotl",
-        ]
+        with open("fursona_parts.json") as file:
+            parts0, parts1, parts2 = json.load(file)
         self.pseudonym = (
             random.choice(parts0)
             + " "

@@ -24,12 +24,20 @@ import json
 from typing import Optional, Final
 from gpt_users import User as GptUser, UserManager as GptUserManager
 from dataclasses import dataclass, asdict, field, InitVar
+from telebot import types
+from telebot import TeleBot as Telebot
+from telebot.apihelper import ApiException, ApiTelegramException
+
+from local import LocalizedStrings, UsefulStrings
 
 # import achievements as acv
 
 MIN_POLL_DISTANCE: Final[int] = 60
 DATE_FORMAT = "%Y-%m-%d"
 ARBITRARY_THRESHOLD = 4
+
+service = LocalizedStrings().service
+"""TextPack with all service text messages on ru and en"""
 
 
 @dataclass
@@ -122,6 +130,7 @@ class User:
     polls: list[Poll]
     days: list[Day]
     achievements: list[Achievement]
+    hearts: list[str]
     meta: dict
     manager: GptUserManager
     groups: set[str] = field(default_factory=set)
@@ -140,13 +149,14 @@ class User:
                 key: value
                 for key, value in d.items()
                 if key
-                not in ("manager", "achievements", "days", "polls", "lastday", "groups")
+                not in ("manager", "achievements", "days", "polls", "lastday", "groups", "hearts")
             },
             days=[Day.from_dict(day) for day in d["days"]],
             achievements=[Achievement(**ach) for ach in d["achievements"]],
             polls=[Poll(**poll) for poll in d["polls"]],
             lastday=LastDay(**d["lastday"]),
             manager=manager,
+            hearts=d.get("hearts", UsefulStrings.hearts["mood"]),
             groups=set(d["groups"])
         )
 
@@ -278,6 +288,7 @@ class User:
             ],
             achievements=[Achievement(a, "00:00", None) for a in achievements],
             manager=manager,
+            hearts=UsefulStrings.hearts["mood"],
             meta=dict(
                 # new=True,
                 demog=demog,
@@ -474,6 +485,31 @@ class UserManager:
             if self.users[user_id].reminder_needed():
                 yield user_id
 
+    def get_lang(self, user: types.User):
+        """Get the language code for chosen User instance"""
+        if user.id not in self.users:
+            if user.language_code in ("ru", "en"):
+                return user.language_code
+            else:
+                return "en"
+        poll_user = self.users[user.id]
+        if "lang" not in poll_user.meta:
+            if user.language_code in ("ru", "en"):
+                poll_user.meta["lang"] = user.language_code
+            else:
+                poll_user.meta["lang"] = "en"
+            self.dump_user(user.id)
+        return poll_user.meta["lang"]
+
+    def send_polls(self, bot: Telebot):
+        if time.localtime().tm_min % 5 != 0:
+            return
+        for user_id, tpe in self.needed_polls_stack():
+            self.send_poll(bot, user_id, tpe, self.users[user_id].meta.get("lang", "ru"))
+        for user_id in self.needed_reminds_stack():
+            lang = self.users[user_id].meta.get("lang", "ru")
+            bot.send_message(user_id, service[lang]["reminder"])
+
     def track(self, tpe, score):
         if self.tracker.date != self.__today:
             self.tracker = Tracker(self.__today)
@@ -483,6 +519,35 @@ class UserManager:
             self.tracker.types_data[tpe].add(score)
         self.dump_tracker()
 
+    def send_poll(self, bot: Telebot, user_id, tpe: str = "mood", lang="ru", manual=False):
+        if tpe == "mood":
+            hearts = self.users[user_id].hearts
+        else:
+            hearts = UsefulStrings.hearts[tpe]  # Update to retrieve from user_settings
+        if lang is None:
+            lang = "en"
+        scale: str = service[lang]["poll"][tpe]
+        if tpe == "mood":
+            scale = scale.format(*hearts)
+        text = f'{self.__today}\n{scale}'
+        markup = types.InlineKeyboardMarkup([[
+            types.InlineKeyboardButton(
+                hearts[i], callback_data=f"DS_{tpe[0]}_{i}"
+            )
+            for i in range(7)
+        ]])
+        try:
+            bot.send_message(user_id, text, reply_markup=markup)
+            if not manual:
+                self.users[user_id].lastday.register_poll(tpe)
+        except ApiException:
+            self.users[user_id].polls = []
+            # dab_upd(STATUS_FILE, user_id, None)
+
+    def forced_polls(self, bot):
+        for uid, tpe in self.needed_polls_stack():
+            self.send_poll(bot, uid, tpe, self.users[uid].meta.get("lang", "ru"))
+
     def dump_tracker(self):
         self.tracker.dump(self.__track_file)
 
@@ -490,6 +555,13 @@ class UserManager:
     #     if self.agg['date'] != self.__today:
     #         return None
     #     return self.agg[tpe].average(nums)
+        
+    def dem_response(self, user_id, key, answer):
+        user = self.users[user_id]
+        if "demog" not in user.meta:
+            user.meta["demog"] = {}
+        user.meta["demog"].update({key: answer})
+        self.dump_user(user_id)
 
     def new_response(self, user_id: int, tpe: str, score: int):
         self.users[user_id].response(tpe, score)
@@ -517,6 +589,7 @@ class UserManager:
             achievements=[],
             manager=self.manager,
             lastday=LastDay.denovo(),
+            hearts=UsefulStrings.hearts["mood"],
             meta=kwargs,
         )
         self.dump_user(user_id)
@@ -529,3 +602,75 @@ class UserManager:
             )
         del self.users[user_id]
         os.remove(os.path.join(self.folder, "{}.json".format(user_id)))
+
+    def update_admin(self, bot: Telebot, tpe, ADMIN: int):
+        hearts = UsefulStrings.hearts
+        tpe_data = [
+            (
+                tpe,
+                self.tracker.types_data[tpe].count,
+                self.tracker.types_data[tpe].total,
+            )
+            for tpe in self.tracker.types_data
+        ]
+        text = "{}\n{}".format(
+            time.strftime(DATE_FORMAT),
+            "\n".join([
+                "\n".join((
+                    "Статистика по {}:".format(tpe),
+                    "Ответов: {}, Среднее: {}".format(
+                        cnt, UsefulStrings.hearts[tpe][round(ttl / cnt)]
+                    ),
+                ))
+                for tpe, cnt, ttl in tpe_data
+            ]),
+        )
+        if (
+            not self.tracker.tr_messages
+            or self.tracker.tr_messages[0].chat_id != ADMIN
+        ):
+            message = bot.send_message(ADMIN, text)
+            assert message.text is not None
+            self.tracker.tr_messages.insert(
+                0, TrackingMessage(ADMIN, message.id, "ADMIN", message.text)
+            )
+            self.dump_tracker()
+            return
+        if self.tracker.tr_messages[0].current_txt == text:
+            return
+        try:
+            bot.edit_message_text(text, ADMIN, self.tracker.tr_messages[0].message_id)
+        except ApiTelegramException:
+            message = bot.send_message(ADMIN, text)
+            assert message.text is not None
+            self.tracker.tr_messages.insert(
+                0, TrackingMessage(ADMIN, message.id, "ADMIN", message.text)
+            )
+            self.dump_tracker()
+        for tracker in self.tracker.tr_messages:
+            if tracker.tpe != tpe:
+                continue
+            if text == tracker.current_txt:
+                continue
+            a = self.users.get(tracker.chat_id, None)
+            if a is None:
+                lang = "en"
+            else:
+                lang = a.meta.get("lang", "en")
+            try:
+                avg = self.tracker.types_data[tpe].average()
+                if avg is None:
+                    avg = 0
+                if type(avg) == float:
+                    avg = int(avg)
+                bot.edit_message_text(
+                    service[lang]["today_text"].format(
+                        tpe,
+                        hearts[tpe][avg],
+                    ),
+                    tracker.chat_id,
+                    tracker.message_id,
+                )
+            except ApiTelegramException:
+                print("It failed. Again :<")
+        return
