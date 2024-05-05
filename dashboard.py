@@ -96,11 +96,12 @@ def get_completion_array(bot: str, dates: list[str]):
   df['date'] = pd.to_datetime(df['date'])
   return df
 
-def get_frequencies(df: pd.DataFrame):
+def get_frequencies(df: pd.DataFrame, normalize: bool):
   df1 = df.groupby(["date", "score"]).count().reset_index()
   df2 = df.groupby(["date"]).count().reset_index()
   df3 = pd.merge(df1, df2, "outer", on="date")
-  df3["ratio"] = df3["time_x"] / df3["time_y"]
+  by = df3["time_y"] if normalize else df3["time_y"].max()
+  df3["ratio"] = df3["time_x"] / by
   df3["count"] = df3["time_x"]
   df3["score"] = df3["score_x"]
   df3 = df3[["date", "score", "ratio", "count"]]
@@ -186,16 +187,18 @@ app.layout = html.Div([
   html.Header([
     html.H1(children="PSI bots data", style={"textAlign": "left"}),
     html.H4(children="made by Folegle", style={"textAlign": "left"},)
-  ]),
-  html.P("Choose bot"),
-  dcc.Dropdown([
-    {'label': 'Nastyenka', 'value': 'nastya'},
-    {'label': 'Diana', 'value': 'diana'}
-  ], value = 'nastya', id='bot_choice'),
-  dcc.Interval(id="interval-refresh", interval=5*60*1000, n_intervals=0),
-  html.Br(),
-  dcc.Graph("today-distribution"),
-  html.Br(),
+  ], style={'margin-left': "30%", 'margin-right': "30%"}),
+  html.Div([
+    html.P("Choose bot"),
+    dcc.Dropdown([
+      {'label': 'Nastyenka', 'value': 'nastya'},
+      {'label': 'Diana', 'value': 'diana'}
+    ], value = 'nastya', id='bot_choice'),
+    dcc.Interval(id="interval-refresh", interval=5*60*1000, n_intervals=0),
+], style={'margin-left': "30%", 'margin-right': "30%"}),
+  html.Div([
+    dcc.Graph("today-distribution"),
+  ], style={'margin-left': "30%", 'margin-right': "30%"}),
   html.Div([
     html.Div(
       dcc.Graph(id="demog-sex-dist")
@@ -208,9 +211,14 @@ app.layout = html.Div([
     , style={'padding': 10, 'flex': 1})
   ], style={'display': 'flex', 'flexDirection': 'row'}),
   html.Br(),
-  html.H2("Additional data"),
-  html.P("Choose date range"),
-  dcc.DatePickerRange(date.today() - timedelta(days=7), date.today(), id="date_range"),
+  html.Div([
+    html.H2("Additional data"),
+    html.P("Choose date range"),
+    html.Div([
+      dcc.DatePickerRange(date.today() - timedelta(days=7), date.today(), id="date_range"),
+      dcc.Checklist(["Normalize daily answers"], id="dans_norm")
+    ], style={'flex': 1}),
+    ], style={'margin-left': "30%", 'margin-right': "30%"}),
   html.Div([
     html.Div([
       dcc.Graph(id="poll-times-plot"),
@@ -307,14 +315,15 @@ def build_demog(bot_choice, cd1, cd2, _):
   Input("bot_choice", "value"),
   Input("date_range", "start_date"),
   Input("date_range", "end_date"),
+  Input("dans_norm", "value"),
   Input("interval-refresh", "n_intervals")
 )
-def build_ranged_plots(bot_choice, start_date, end_date, _):
+def build_ranged_plots(bot_choice, start_date, end_date, dans_norm, _):
   start = date.fromisoformat(start_date)
   end = date.fromisoformat(end_date)
   drange = date_range(start, end)
   completion = get_completion_array(bot_choice, drange)
-  freqs = get_frequencies(get_filtered_data(bot_choice, drange=drange))
+  freqs = get_frequencies(get_filtered_data(bot_choice, drange=drange), bool(dans_norm))
   fig1 = px.bar(completion, "date", "count")
   fig2 = px.bar(
     freqs, 'date', 'ratio', 'score',
