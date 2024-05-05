@@ -493,6 +493,8 @@ def demogr(call: types.CallbackQuery):
     dem_response(
         call.from_user.id, questions[lang][cur][0], questions[lang][cur][2][ans]
     )
+    if questions[lang][cur][2][ans] == "Australia":
+        bot.send_sticker(call.message.chat.id, "CAACAgIAAxkBAAIC6GY3fDOjGotqJyJQmcWDjGq93-g3AAIjJAAC8ZSZSUD6sScQHLfnNQQ")  # Australian Fairy Bread
     cur += 1
     if cur >= len(questions[lang]):
         bot.edit_message_text(
