@@ -25,3 +25,4 @@ links.json
 links.txt
 *.sqlite
 *.sh
+sup_data/
