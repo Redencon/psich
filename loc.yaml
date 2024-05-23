@@ -111,6 +111,7 @@ ru:
     poll_answer: Вы ответили {answer}
     unsub_no: Ну и замечательно.
     unsub_yes: Да будет так.
+    graph_onetime: График можно получить (пока что) только один раз.
     groups_init: |
       Это список групп, в которых ты состоишь. Свяжись с админом, если хочешь чтобы тебя добавили или убрали из группы.
       
@@ -333,6 +334,7 @@ en:
     poll_answer: You answered {answer}
     unsub_no: Great.
     unsub_yes: Then so be it.
+    graph_onetime: For now you can get you mood graph only once.
     groups_init: |
       Here's a list of groups you are part of. Contact admin if you want to be added or remove from any group.
       

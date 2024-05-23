@@ -24,6 +24,8 @@ from functools import partial
 # from achievements import average_consistency_achievement
 from achievements import timestamp
 
+from mood_graph import user_graph
+
 # from achievements import achievement_message
 from requests.exceptions import ConnectionError, HTTPError
 from telebot.apihelper import ApiException
@@ -319,6 +321,12 @@ def parse_survey(call: types.CallbackQuery):
     bot.send_message(
       call.message.chat.id, random.choice(LocalizedStrings().respons_texts[lang][answer])
     )
+  
+  # Check for 100
+  status = len(poll_users.get_user_calendar(uid, "mood"))
+  if status == 100:
+    bot.send_message(uid, "100 заполнений! Поздравляю, теперь ты можешь получить значок в благодарность. Напиши @Folegle за деталями.")
+    bot.send_message(ADMIN, f"100 reached: {call.from_user.username}")
   # for i in (3, 7, 14, 30, 61, 150):
   #   a = streak_achievement(call.from_user.id, i, RESPONSES_FOLDER + "/")
   #   if a is not None:
@@ -796,6 +804,24 @@ def send_time(uid: int, lang: str):
       ]
     ),
   )
+
+
+@bot.message_handler(commands=['graph'])
+@registered_only
+def send_graph(message: types.Message):
+  lang = poll_users.get_lang(message.from_user)
+  uid = message.from_user.id
+  graph_sent = poll_users.get_meta(uid, "graph")
+  if graph_sent is not None:
+    bot.send_message(uid, service[lang]["graph_onetime"])
+    return
+  filename = user_graph(
+    poll_users, uid, (message.from_user.username or ""),
+    "2024-02-15", time.strftime("%Y-%m-%d")
+  )
+  bot.send_photo(uid, types.InputFile(filename))
+  os.remove(filename)
+  poll_users.set_meta(uid, "graph", "sent")
 
 
 @bot.message_handler(commands=["time"])

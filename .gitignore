@@ -26,3 +26,5 @@ links.txt
 *.sqlite
 *.sh
 sup_data/
+notebooks/
+assets/*.png

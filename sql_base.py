@@ -581,5 +581,11 @@ class DatabaseManager:
         user = self._get_user_by_uid(session, uid)
       except NoResultFound:
         return
+      meta = session.scalars(
+        select(Meta)
+        .where(Meta.uid == user.uid)
+      ).all()
       session.delete(user)
+      for m in meta:
+        session.delete(m)
       session.commit()
