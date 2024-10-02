@@ -14,7 +14,7 @@ import time
 from gmail_send_message import send_code
 import random
 import gpt_users
-import responses
+# import responses
 from sql_base import DatabaseManager
 from local import LocalizedStrings, UsefulStrings
 from functools import partial
@@ -65,7 +65,7 @@ TextPack = dict[str, dict[str, Any]]
 loc_strings = LocalizedStrings(LOC_FILE)
 service = loc_strings.service
 
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TOKEN, suppress_middleware_excepions=True)
 
 chat_users = gpt_users.UserManager()
 # poll_users = responses.UserManager(secret, chat_users)
@@ -1336,6 +1336,19 @@ def reply_to_anon_message(message: types.Message):
   text = message.text.format(name=user.name)
   safe_send_message(user.id, text)
   return
+
+
+@bot.callback_query_handler(func=lambda c: c.data[:3] == "CS_")
+def custom_callback(call: types.CallbackQuery):
+  bot.answer_callback_query(call.id, "✔")
+  args = call.data.split("_")
+  mess = args[-1]
+  if "ech" in args:
+    bot.send_message(call.message.chat.id, mess)
+  if "usr" in args:
+    mess = "{} {}\n\n".format(call.from_user.id, call.from_user.username)
+  if "adm" in args:
+    bot.send_message(ADMIN, mess)
 
 
 @bot.message_handler(
