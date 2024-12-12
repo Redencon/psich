@@ -180,6 +180,37 @@ def get_answer_times(bot:str):
   return [time_str_to_int(t) for t in times]
 
 
+def get_lowess_data(bot, start: date, finish: date, frac):
+  dbm = dbms[bot]
+  rows = []
+  for uid in dbm.get_active_users():
+    try:
+      cal = dbm.get_user_calendar(uid, "mood")
+    except:
+      continue
+    for k, v in cal.items():
+      rows.append({
+        'uid': uid, 'date': k, 'score': v
+      })
+  start = pd.to_datetime(start)
+  finish = pd.to_datetime(finish)
+  df = pd.DataFrame(rows)
+  df["date"] = pd.to_datetime(df["date"])
+  df = df[(df["date"] >= start) & (df["date"] <= finish)]
+  gdf = df.groupby("date")["uid"].count().reset_index()
+  bad_dates = gdf[gdf["uid"] < 10]["date"].to_list()
+  df = df[df["date"].apply(lambda dt: dt not in bad_dates)]
+  df["score"] = 7 - df["score"]
+  data = df.groupby("date")['score'].mean().reset_index()
+  fig = px.scatter(
+      data, x='date', y='score',
+      labels={'date': "Дата", 'score': "Оценка"},
+      title="Среднее значение настроения респондентов",
+      trendline = 'lowess', trendline_options=dict(frac=frac),
+  )
+  return fig
+
+
 # --- [ Layout ] ---
 app = Dash("PSI-dash", external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'], title="PSI Data")
 
@@ -215,7 +246,7 @@ app.layout = html.Div([
     html.H2("Additional data"),
     html.P("Choose date range"),
     html.Div([
-      dcc.DatePickerRange(date.today() - timedelta(days=7), date.today(), id="date_range"),
+      dcc.DatePickerRange(date(2024, 3, 1), date.today(), id="date_range"),
       dcc.Checklist(["Normalize daily answers"], id="dans_norm")
     ], style={'flex': 1}),
     ], style={'margin-left': "30%", 'margin-right': "30%"}),
@@ -229,6 +260,10 @@ app.layout = html.Div([
       dcc.Graph("quantile-plot")
     ], style={'padding': 10, 'flex': 1}),
   ], style={'display': 'flex', 'flexDirection': 'row'}),
+  html.Div([
+    html.Div(dcc.Slider(0.05, 0.8, 0.05, id="lowess-frac", value=0.1), style={'max-width': '500px', 'margin': 'auto'}),
+    dcc.Graph(id="lowess-plot")
+  ], style={'padding': 10}),
   html.Footer([
     html.Small("Made by Folegle — MKI-MIPT SC Digital Architect and Analyst")
   ])
@@ -310,15 +345,17 @@ def build_demog(bot_choice, cd1, cd2, _):
 
 
 @callback(
+  Output("lowess-plot", "figure"),
   Output("completion-plot", "figure"),
   Output("quantile-plot", "figure"),
   Input("bot_choice", "value"),
   Input("date_range", "start_date"),
   Input("date_range", "end_date"),
   Input("dans_norm", "value"),
-  Input("interval-refresh", "n_intervals")
+  Input("interval-refresh", "n_intervals"),
+  Input("lowess-frac", "value")
 )
-def build_ranged_plots(bot_choice, start_date, end_date, dans_norm, _):
+def build_ranged_plots(bot_choice, start_date, end_date, dans_norm, _, lfrac):
   start = date.fromisoformat(start_date)
   end = date.fromisoformat(end_date)
   drange = date_range(start, end)
@@ -329,7 +366,8 @@ def build_ranged_plots(bot_choice, start_date, end_date, dans_norm, _):
     freqs, 'date', 'ratio', 'score',
     color_discrete_map=color_map_s, category_orders={'score': score_map[::-1]})
   fig2.update_layout(legend={'traceorder': 'reversed'})
-  return fig1, fig2
+  lcf = get_lowess_data(bot_choice, start, end, lfrac)
+  return lcf, fig1, fig2
 
 
 @callback(

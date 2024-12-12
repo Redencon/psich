@@ -90,3 +90,14 @@ class LastDay(Base):
   date: Mapped[str]
   tpe: Mapped[str] = mapped_column(default="mood")
   count: Mapped[int] = mapped_column(default=0)
+
+
+class Arcana(Base):
+  __tablename__ = "arcana"
+  
+  id: Mapped[int] = mapped_column(primary_key=True)
+  uid: Mapped[int] = mapped_column(ForeignKey("users.uid", ondelete="CASCADE"))
+  date: Mapped[str]
+  s1: Mapped[Optional[int]] = mapped_column(default=None)
+  s2: Mapped[Optional[int]] = mapped_column(default=None)
+  isjp: Mapped[bool]

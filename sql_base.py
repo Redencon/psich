@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import func
 import time
+import datetime as dtt
+import random
 from typing import Final
 from local import UsefulStrings, LocalizedStrings
 from telebot import types
@@ -60,6 +62,16 @@ class DatabaseManager:
         c += 1
         s += response.score
       return round(s/c)
+
+  def get_day_response(self, uid: int, day: dtt.date):
+    with Session(self.engine) as session:
+        res = session.scalars(
+          select(Response.score)
+          .where(Response.uid == uid)
+          .where(Response.tpe == "mood")
+          .where(Response.date == day.strftime(DATE_FORMAT))
+        ).all()
+    return sum(res) / len(res) if res else None
     
 
   def add_poll(self, uid: int, time: str, _type: str):
@@ -297,7 +309,7 @@ class DatabaseManager:
           select(Meta.value)
           .where(Meta.key == "verified")
           .where(Meta.uid == uid)
-        )
+        ).one()
       except NoResultFound:
         return False
       return ver == "True"
@@ -589,3 +601,83 @@ class DatabaseManager:
       for m in meta:
         session.delete(m)
       session.commit()
+
+  def check_arcana(self, uid):
+    "Return True if you can draw an arcana today"
+    with Session(self.engine) as session:
+      arcanas = session.scalars(
+        select(Arcana)
+        .where(Arcana.uid == uid)
+        .order_by(Arcana.id)
+      ).all()
+      if not arcanas:
+        return True
+      last_arcana = arcanas[-1]
+      lad = dtt.datetime.strptime(last_arcana.date, DATE_FORMAT)
+    if dtt.datetime.today() - lad < dtt.timedelta(days=7):
+      return False
+    return True
+
+  def add_arcana(self, uid, is_jp, s1=None, s2=None):
+    with Session(self.engine) as session:
+      arcana = Arcana(uid=uid, date=dtt.date.today().strftime(DATE_FORMAT), isjp=is_jp, s1=s1, s2=s2)
+      session.add(arcana)
+      session.commit()
+      session.refresh(arcana)
+      session.expunge(arcana)
+    return arcana
+
+  def update_arcana_score(self, uid, date, s1=None, s2=None):
+    with Session(self.engine) as session:
+      try:
+        arcana = session.scalars(
+          select(Arcana)
+          .where(Arcana.uid == uid)
+          .where(Arcana.date == date)
+        ).one()
+      except NoResultFound:
+        return None  # Can happen if dates got desynchronized.
+      if s1:
+        arcana.s1 = s1
+      if s2:
+        arcana.s2 = s2
+      session.commit()
+    return True
+
+  def get_arcana_scores(self, uid, date):
+    with Session(self.engine) as session:
+      try:
+        arcana = session.scalars(
+          select(Arcana)
+          .where(Arcana.uid == uid)
+          .where(Arcana.date == date)
+        ).one()
+      except NoResultFound:
+        return None  # Can happen if dates got desynchronized.
+      return arcana.s1, arcana.s2
+
+  @staticmethod
+  def score_category(t2, t1, t0):
+    if any([t is None for t in (t2, t1, t0)]):
+        return "Unknown"
+    d2 = t1 - t2
+    d1 = t0 - t1
+    if abs(d2) < 2 and abs(d1) < 2:
+        # Stable
+        if t0 < 2:
+            return "Stable High"
+        if t0 > 4:
+            return "Stable Low"
+        return "Stable Middle"
+    if d2 > 2 and d1 < -2 or d2 < -2 and d1 > 2:
+        return "Fluctuating"
+    if d1 + d2 < 0:
+        return "Decreasing"
+    return "Increasing"
+
+  def get_user_answers_category(self, uid, day: dtt.date):
+    t2 = day - dtt.timedelta(days=2)
+    t1 = day - dtt.timedelta(days=1)
+    t0 = day
+    score = self.score_category(*[self.get_day_response(uid, t) for t in (t2, t1, t0)])
+    return score

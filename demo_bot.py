@@ -11,7 +11,9 @@ import sys
 import schedule
 from telebot import types
 import time
-from gmail_send_message import send_code
+import datetime as dtt
+# from gmail_send_message import send_code
+from folegle_send_message import send_code
 import random
 import gpt_users
 # import responses
@@ -58,6 +60,10 @@ START_FILE = secret["START_FILE"]
 LOC_FILE = secret["LOC_FILE"]
 DOMEN = secret["DOMEN"]
 DB_PATH = secret["DB_PATH"]
+SMTP_VARS = (
+  secret["SMTP_SERVER"], secret["SMTP_PORT"],
+  secret["SMTP_USERNAME"], secret["SMTP_PASSWORD"]
+)
 s = True
 
 TextPack = dict[str, dict[str, Any]]
@@ -653,7 +659,7 @@ def email(message: types.Message):
     return
   else:
     try:
-      code = send_code(response, DOMEN)
+      code = send_code(response, *SMTP_VARS, DOMEN)
     except Exception as e:
       bot.send_message(
         ADMIN,
@@ -1211,7 +1217,7 @@ def start_survey(message: types.Message):
     if not poll_users.user_exists(user):
       survey_pool.user_declined(survey.code, user)
       continue
-    lang = "en"
+    lang = poll_users.get_meta(user, "lang") or "en"
     try:
       bot.send_message(
         user,
@@ -1265,13 +1271,105 @@ def demog_manual(message: types.Message):
   poll_users.dem_wipe(message.from_user.id)
 
 
-# @bot.message_handler(["forcedemog"], func=lambda m: m.from_user.id == ADMIN)
-# def force_demog(_: types.Message):
-#   for uid, user in poll_users.users.items():
-#     demog_init(uid, user.meta.get("lang", "en"))
-#     user.meta["demog"] = {}
-#     poll_users.dump_user(uid)
-#   bot.send_message(ADMIN, "Sent renewed demog polls")
+@bot.message_handler(["forcedemog"], func=lambda m: m.from_user.id == ADMIN)
+def force_demog(_: types.Message):
+  for uid in poll_users.get_active_users():
+    try:
+      demog_init(uid, poll_users.get_meta(uid, "lang") or "en")
+    except ApiException:
+      bot.send_message(ADMIN, f"user {uid} demwipe failed")
+      continue
+    poll_users.dem_wipe(uid)
+  bot.send_message(ADMIN, "Sent renewed demog polls")
+
+
+@bot.message_handler(["arcana"])
+def arcana_start(message: types.Message):
+  """Arcana request.
+  
+  Reurn Z in any scenario:
+  - insufficient answers on polls
+  - arcana on cooldown
+  - JP
+  """
+  uid = message.from_user.id
+  with open("arcana_stickers.json") as f:
+    z_sticker = json.load(f)["Z"]
+  with open("arcana.json", encoding='utf-8') as f:
+    arcana_text = json.load(f)
+  # Check if enough answers
+  cat = poll_users.get_user_answers_category(uid, dtt.date.today())
+  if cat == "Unknown":
+    bot.send_sticker(uid, z_sticker)
+    bot.send_message(uid, random.choice(arcana_text[cat]["Z"]))
+    return
+  # Check cooldown
+  if not poll_users.check_arcana(uid):
+    bot.send_message(uid, random.choice(arcana_text["Too much"]["Z"]))
+    return
+  # Check JP
+  jp = random.uniform(0, 1000) < 10 
+  if jp:
+    poll_users.add_arcana(uid, True)
+    bot.send_sticker(uid, z_sticker)
+    bot.send_message(uid, random.choice(arcana_text["Jackpot"]["Z"]))
+    return
+  # Run questions
+  with open("arcana_questions.json", encoding='utf-8') as f:
+    aquestions = json.load(f)
+  q1 = random.choice(aquestions)
+  text = q1["question"]
+  markup = types.InlineKeyboardMarkup(
+    [[types.InlineKeyboardButton(a["text"], callback_data="AR_{}_N".format(a["score"])) for a in q1["answers"]]]
+  )
+  bot.send_message(uid, text, reply_markup=markup)
+  return
+
+
+@bot.callback_query_handler(lambda c: c.data[:3] == "AR_")
+def arcana_button(call: types.CallbackQuery):
+  """Possible datas: AR_s1_s2. From this either sand next question, or send arcana"""
+  bot.answer_callback_query(call.id)
+  data = call.data.split("_")
+  uid = call.from_user.id
+  # Check if s2
+  if data[2] == "N":
+    with open("arcana_questions.json", encoding='utf-8') as f:
+      aquestions = json.load(f)
+    # Send second question
+    s1 = data[1]
+    q_text = call.message.text
+    assert q_text is not None
+    cur_text = q_text
+    n_attempts = 50
+    while n_attempts and (q_text == cur_text):
+      q2 = random.choice(aquestions)
+      cur_text = q2["question"]
+      n_attempts -= 1
+    markup = types.InlineKeyboardMarkup(
+      [[types.InlineKeyboardButton(a["text"], callback_data="AR_{}_{}".format(s1, a["score"])) for a in q2["answers"]]]
+    )
+    bot.edit_message_text(cur_text, uid, call.message.id, reply_markup=markup)
+    return
+  # Get category
+  with open("arcana.json", encoding='utf-8') as f:
+    arcana_texts = json.load(f)
+  with open("arcana_stickers.json") as f:
+    stickers = json.load(f)
+  cat = poll_users.get_user_answers_category(uid, dtt.date.today())
+  cards: dict[str, list[str]] = arcana_texts[cat]
+  # Make prediction
+  card_types = list(cards.keys())
+  s1 = int(data[1])
+  s2 = int(data[2])
+  score = s1 + s2
+  card = card_types[score % len(card_types)]
+  sticker = stickers[card]
+  advice = random.choice(cards[card])
+  poll_users.add_arcana(uid, False, s1, s2)
+  bot.delete_message(call.message.chat.id, call.message.id)
+  bot.send_sticker(uid, sticker)
+  bot.send_message(uid, advice)
 
 
 def safe_send_message(chat_id, message):
