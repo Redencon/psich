@@ -256,7 +256,7 @@ def request_poll(message: types.Message):
       [
         [
           types.InlineKeyboardButton("🌠", callback_data="PR_mood"),
-          types.InlineKeyboardButton("💊", callback_data="PR_health"),
+          # types.InlineKeyboardButton("💊", callback_data="PR_health"),
           types.InlineKeyboardButton("❎", callback_data="PR_cancel"),
         ]
       ]

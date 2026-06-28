@@ -372,7 +372,7 @@ class DatabaseManager:
     text = f'{today}\n{scale}'
     markup = types.InlineKeyboardMarkup([[
       types.InlineKeyboardButton(
-        hearts[i], callback_data=f"DS_{tpe[0]}_{i}"
+        hearts[i], callback_data=f"DS_{tpe[0]}_{i}", style=("danger" if i==0 else None)
       )
       for i in range(7)
     ]])
